@@ -19,15 +19,15 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Pobierz pliki projektu
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Przygotuj Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
 
       - name: Przygotuj Pythona
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
@@ -37,13 +37,15 @@ jobs:
       - name: Ustaw numer wersji i adres repozytorium
         shell: bash
         run: |
-          npm pkg set version=${{ inputs.wersja }}
+          WERSJA="${{ inputs.wersja }}"; WERSJA="${WERSJA#v}"; WERSJA="${WERSJA// /}"
+          npm pkg set version="$WERSJA"
           npm pkg set pokazRepo=${{ github.repository }}
 
       - name: Zainstaluj biblioteki
         run: npm ci --no-audit --no-fund
 
       - name: Zbuduj i opublikuj
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >
