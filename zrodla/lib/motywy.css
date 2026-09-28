@@ -1,0 +1,20 @@
+/* Motywy plansz — zmieniają kolory, czcionki i ozdobniki pokazu (plansze, napisy, ogłoszenia) oraz pilota.
+   Ustawiane atrybutem data-theme na elemencie pokazu albo na stronie pilota. */
+[data-theme=morski]{--gold:#6FB7C8;--gold2:#CDEBF2;--text:#EAF6F8;--muted:#9FC3CC;--serif:'Josefin Sans',Jost,system-ui,sans-serif;
+  --card-bg:radial-gradient(ellipse at 50% 35%,#17475e 0%,#0b2536 58%,#06141f 100%);--bg:#0b1f2a;--panel:#0f2a38;--panel2:#153646;--line:#24505f;--rose:#F29E8E;--sage:#8FD3B6}
+[data-theme=morski] .card .names,[data-theme=morski] .card h1,[data-theme=morski] #annText,[data-theme=morski] .nowplay b,[data-theme=morski] .reqnote b,[data-theme=morski] .roll h2.big,[data-theme=morski] .roll p{font-style:normal;font-weight:600;letter-spacing:.01em}
+[data-theme=morski] .card .rule{height:14px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='14' viewBox='0 0 40 14'%3E%3Cpath d='M0 7 Q10 0 20 7 T40 7' fill='none' stroke='%236FB7C8' stroke-width='2'/%3E%3C/svg%3E") center/40px 14px repeat-x}
+
+[data-theme=kolorowy]{--gold:#FF8A5B;--gold2:#FFD166;--text:#FFF8EE;--muted:#FFD9C2;--serif:'Fredoka',Jost,system-ui,sans-serif;
+  --card-bg:radial-gradient(ellipse at 50% 30%,#46206a 0%,#241039 60%,#140a22 100%);--bg:#1d1030;--panel:#2a1745;--panel2:#351d57;--line:#4c2f73;--rose:#FF6B6B;--sage:#06D6A0}
+[data-theme=kolorowy] .card .names,[data-theme=kolorowy] .card h1,[data-theme=kolorowy] #annText,[data-theme=kolorowy] .nowplay b,[data-theme=kolorowy] .reqnote b,[data-theme=kolorowy] .roll h2.big,[data-theme=kolorowy] .roll p{font-style:normal;font-weight:600}
+[data-theme=kolorowy] .card .rule{height:7px;border-radius:4px;background:linear-gradient(90deg,#FF6B6B,#FFD166,#06D6A0,#4CC9F0,#B388EB)}
+
+[data-theme=klasyczny]{--gold:#cfcfcf;--gold2:#ffffff;--text:#f2f2f2;--muted:#a8a8a8;--card-bg:#000;--bg:#121212;--panel:#1c1c1c;--panel2:#262626;--line:#3a3a3a}
+
+[data-theme=natura]{--gold:#A7C58B;--gold2:#E4EFD4;--text:#F3F6EC;--muted:#B9C7A9;
+  --card-bg:radial-gradient(ellipse at 50% 35%,#294430 0%,#132117 62%,#0b140d 100%);--bg:#142018;--panel:#1c2c20;--panel2:#243829;--line:#355039;--rose:#E7A07C;--sage:#A7C58B}
+[data-theme=natura] .card .rule{height:16px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='16' viewBox='0 0 120 16'%3E%3Cpath d='M0 8H48M72 8H120' stroke='%23A7C58B' stroke-width='1.5'/%3E%3Cpath d='M60 1C52 5 52 11 60 15C68 11 68 5 60 1Z' fill='%23A7C58B'/%3E%3C/svg%3E") center/120px 16px no-repeat}
+
+/* tło plansz */
+.layer:has(.card){background:var(--card-bg,#000)}

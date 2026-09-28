@@ -1,0 +1,54 @@
+# Buduje aplikację Pokazy na Windows i publikuje nową wersję:
+#   • Pokazy-Setup-X.Y.Z.exe     — instalator (aktualizuje się sam)
+#   • Pokazy-Portable-X.Y.Z.zip  — wersja przenośna (też aktualizuje się sama)
+# Uruchamiasz ręcznie: zakładka Actions → „Zbuduj i wydaj Pokazy” → Run workflow → wpisz numer wersji.
+name: Zbuduj i wydaj Pokazy
+
+on:
+  workflow_dispatch:
+    inputs:
+      wersja:
+        description: 'Numer nowej wersji, np. 1.0.1 (zawsze wyższy niż poprzedni)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Pobierz pliki projektu
+        uses: actions/checkout@v4
+
+      - name: Przygotuj Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Przygotuj Pythona
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Złóż stronę pokazu ze źródeł
+        run: python zrodla/build.py web --app
+
+      - name: Ustaw numer wersji i adres repozytorium
+        shell: bash
+        run: |
+          npm pkg set version=${{ inputs.wersja }}
+          npm pkg set pokazRepo=${{ github.repository }}
+
+      - name: Zainstaluj biblioteki
+        run: npm ci --no-audit --no-fund
+
+      - name: Zbuduj i opublikuj
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          npx electron-builder --win --x64 --publish always
+          -c.publish.provider=github
+          -c.publish.owner=${{ github.repository_owner }}
+          -c.publish.repo=${{ github.event.repository.name }}
+          -c.publish.releaseType=release

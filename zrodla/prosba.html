@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#221925">
+<title>Dołącz do pokazu</title>
+<link rel="stylesheet" href="lib/fonts.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>">
+<style>
+:root{--bg:#221925;--panel:#2B2030;--panel2:#35293A;--line:#46384B;--text:#F2E9DC;--muted:#B5A5B1;--gold:#D8B878;--gold2:#EDD4A0;--sage:#9FBBA6;--rose:#E2939A;
+  --serif:'Cormorant Garamond',Georgia,serif;--sans:Jost,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 var(--sans)}
+body{padding:max(18px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom));max-width:560px;margin:0 auto;display:grid;gap:14px}
+h1{margin:4px 0 0;font:italic 500 34px/1.1 var(--serif);color:var(--gold2);text-align:center}
+.sub{margin:0;text-align:center;color:var(--muted);font-size:15px}
+input{font:inherit;color:inherit;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:12px 14px;width:100%}
+button{font:inherit;color:inherit;border:1px solid var(--line);background:var(--panel2);border-radius:14px;min-height:48px;padding:6px 14px;cursor:pointer}
+button.go{background:var(--gold);color:#2A1D22;border-color:var(--gold);font-weight:500}
+button:disabled{opacity:.5}
+.row{display:flex;gap:8px}.row input{flex:1}
+.list{display:grid;gap:8px}
+.it{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px}
+.it img{width:72px;height:54px;object-fit:cover;border-radius:8px;background:#000}
+.it b{display:block;font-weight:500;line-height:1.25}
+.it small{color:var(--muted);font-size:13px}
+.it button{grid-column:1/-1;min-height:42px}
+.msg{margin:0;padding:12px 14px;border-radius:14px;background:var(--panel);border:1px solid var(--line);color:var(--muted)}
+.msg.ok{border-color:var(--sage);color:#D9EADD}
+.msg.bad{border-color:var(--rose);color:#F6D3D6}
+.msg:empty{display:none}
+label{font-size:14px;color:var(--muted)}
+[hidden]{display:none!important}
+
+.tabs{display:flex;gap:6px;position:sticky;top:0;z-index:5;background:var(--bg);padding:6px 0}
+.tabs button{flex:1;min-height:44px;border-radius:999px;font-size:15px}
+.tabs button.on{border-color:var(--gold);color:var(--gold2);background:var(--panel)}
+.drop{display:grid;place-items:center;gap:6px;min-height:120px;border:2px dashed var(--line);border-radius:18px;text-align:center;color:var(--muted);padding:16px}
+.drop b{color:var(--gold2);font:italic 500 24px/1.1 var(--serif)}
+.ups{display:grid;gap:6px}
+.up{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px;font-size:14px}
+.up span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.up .bar{grid-column:1/-1;height:6px;border-radius:3px;background:var(--panel2);overflow:hidden}.up .bar i{display:block;height:100%;width:0;background:var(--gold);transition:width .2s}
+.up.ok{border-color:var(--sage)}.up.ok .bar i{background:var(--sage)}.up.bad{border-color:var(--rose)}
+.gh{font:italic 500 22px/1.1 var(--serif);color:var(--gold2);margin:12px 0 4px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.grid .c{aspect-ratio:1;background:#000 center/cover no-repeat;border-radius:6px;position:relative;cursor:pointer}
+.grid .c i{position:absolute;right:4px;bottom:3px;font:11px Jost,sans-serif;font-style:normal;color:#fff;text-shadow:0 1px 3px #000}
+.viewer{position:fixed;inset:0;z-index:50;background:#000;display:grid;grid-template-rows:auto 1fr auto}
+.viewer .vt,.viewer .vb{display:flex;gap:8px;align-items:center;padding:max(10px,env(safe-area-inset-top)) 10px 10px}
+.viewer .vb{padding-bottom:max(12px,env(safe-area-inset-bottom))}
+.viewer .vt span{flex:1;color:#ddd;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.viewer .vm{display:grid;place-items:center;overflow:hidden;min-height:0}
+.viewer img,.viewer video{max-width:100%;max-height:100%;object-fit:contain}
+.viewer button,.viewer a{min-height:46px;flex:1;display:grid;place-items:center;text-decoration:none;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:14px;font:inherit}
+.viewer a{background:var(--gold);color:#2A1D22;border-color:var(--gold);font-weight:500}
+</style>
+<link rel="stylesheet" href="lib/motywy.css">
+</head>
+<body>
+<h1 id="h1">Dołącz do pokazu 📱</h1>
+<p class="sub" id="sub"></p>
+<p class="msg bad" id="noKey" hidden>Brakuje kodu. Zeskanuj kod QR na sali jeszcze raz.</p>
+<nav class="tabs" id="tabs" hidden><button data-t="songs">🎵 Piosenka</button><button data-t="upload">📷 Wyślij</button><button data-t="gallery">🖼 Galeria</button></nav>
+
+<section id="tSongs" hidden style="display:grid;gap:12px">
+  <div><label for="nm">Twoje imię (opcjonalnie)</label><input id="nm" maxlength="40" placeholder="np. Kasia" autocomplete="given-name"></div>
+  <div class="row"><input id="q" placeholder="Tytuł lub wykonawca, albo link" enterkeyhint="search"><button class="go" id="go">Szukaj</button></div>
+  <p class="msg" id="msg"></p>
+  <div class="list" id="list"></div>
+</section>
+
+<section id="tUpload" hidden style="display:grid;gap:12px">
+  <div><label for="from">Podpis pod Twoimi zdjęciami (np. od Kasi)</label><input id="from" maxlength="40" placeholder="np. od Kasi i Tomka"></div>
+  <label class="drop" for="files"><b>📷 Wybierz zdjęcia i filmy</b><span>z galerii telefonu — możesz zaznaczyć wiele naraz</span></label>
+  <input type="file" id="files" accept="image/*,video/*" multiple hidden>
+  <p class="msg" id="umsg"></p>
+  <div class="ups" id="ups"></div>
+</section>
+
+<section id="tGallery" hidden style="display:grid;gap:8px">
+  <p class="sub" id="gsub">Dotknij zdjęcia, aby je obejrzeć i pobrać.</p>
+  <div id="gal"></div>
+</section>
+
+<div class="viewer" id="viewer" hidden>
+  <div class="vt"><span id="vName"></span><button id="vClose" style="flex:none;width:46px">✕</button></div>
+  <div class="vm" id="vMedia"></div>
+  <div class="vb"><button id="vPrev">‹</button><a id="vDl" href="#">⬇ Pobierz</a><button id="vNext">›</button></div>
+</div>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+let key = new URLSearchParams(location.hash.slice(1)).get('g');
+try { if (key) localStorage.setItem('guestKey', key); else key = localStorage.getItem('guestKey'); } catch { }
+const LSx = (k, v) => { try { if (v === undefined) return localStorage.getItem(k) || ''; localStorage.setItem(k, v); } catch { return ''; } };
+$('#nm').value = LSx('guestName'); $('#nm').addEventListener('change', () => LSx('guestName', $('#nm').value.trim()));
+$('#from').value = LSx('guestFrom'); $('#from').addEventListener('change', () => LSx('guestFrom', $('#from').value.trim()));
+function fetchT(url, opt = {}, ms = 12000) { const c = new AbortController(), t = setTimeout(() => c.abort(), ms); return fetch(url, { ...opt, signal: c.signal, cache: 'no-store' }).finally(() => clearTimeout(t)); }
+const msg = (t, k, el = '#msg') => { const m = $(el); m.textContent = t || ''; m.className = 'msg' + (k ? ' ' + k : ''); };
+function ytIdOf(s) { const m = String(s || '').match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/)([\w-]{11})/); return m ? m[1] : ''; }
+function parseYTResults(html, max) {
+  max = max || 15;
+  const out = [], seen = new Set();
+  const txt = v => !v ? '' : typeof v === 'string' ? v : v.simpleText || v.content || (v.runs ? v.runs.map(r => r.text).join('') : '');
+  const push = (id, title, channel, dur) => { if (!id || !/^[\w-]{11}$/.test(id) || seen.has(id)) return; seen.add(id); out.push({ id, title: title || '', channel: channel || '', dur: dur || '' }); };
+  const walk = o => {
+    if (!o || typeof o !== 'object' || out.length >= max) return;
+    const vr = o.videoRenderer || o.compactVideoRenderer || o.videoWithContextRenderer || o.playlistVideoRenderer || o.playlistPanelVideoRenderer || o.gridVideoRenderer;
+    if (vr && vr.videoId) push(vr.videoId, txt(vr.title) || txt(vr.headline), txt(vr.ownerText) || txt(vr.shortBylineText) || txt(vr.longBylineText), txt(vr.lengthText));
+    const lk = o.lockupViewModel;
+    if (lk && lk.contentId && (!lk.contentType || /VIDEO/.test(lk.contentType))) {
+      const md = lk.metadata && lk.metadata.lockupMetadataViewModel;
+      let ch = '', dur = '';
+      try { ch = md.metadata.contentMetadataViewModel.metadataRows[0].metadataParts[0].text.content; } catch (e) { }
+      try { const m = JSON.stringify(lk.contentImage || {}).match(/"text":"(\d{1,2}:\d{2}(?::\d{2})?)"/); if (m) dur = m[1]; } catch (e) { }
+      push(lk.contentId, md && txt(md.title), ch, dur);
+    }
+    for (const k in o) walk(o[k]);
+  };
+  const i = html.indexOf('ytInitialData');
+  if (i >= 0) { const s = html.indexOf('{', i), e = html.indexOf(';<\/script>', s); if (s > 0 && e > s) { try { walk(JSON.parse(html.slice(s, e))); } catch (e2) { } } }
+  if (!out.length) { const re = /"videoId":"([\w-]{11})"/g; let m; while ((m = re.exec(html)) && out.length < max) push(m[1], '', '', ''); }
+  return out;
+}
+
+/* ---- zakładki ---- */
+const F = { songs: false, upload: false, gallery: false };
+function tab(t) {
+  for (const b of document.querySelectorAll('.tabs button')) b.classList.toggle('on', b.dataset.t === t);
+  $('#tSongs').hidden = t !== 'songs'; $('#tUpload').hidden = t !== 'upload'; $('#tGallery').hidden = t !== 'gallery';
+  if (t === 'gallery') loadGallery();
+  LSx('guestTab', t);
+}
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => tab(b.dataset.t));
+
+/* ---- piosenki ---- */
+async function ask(id, title, btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetchT(`/api/g/req?g=${encodeURIComponent(key)}`, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ v: id, t: title || '', n: $('#nm').value.trim() }) });
+    const d = await r.json();
+    if (d.ok) { msg(`Dziękujemy! Prośba „${title || 'o piosenkę'}” trafiła do organizatorów. 🎶`, 'ok'); if (btn) btn.textContent = '✓ Wysłano'; }
+    else if (d.wait) { msg(`Chwileczkę — kolejną prośbę możesz wysłać za ${d.wait} s.`, 'bad'); if (btn) btn.disabled = false; }
+    else { msg('Prośby są teraz wyłączone.', 'bad'); if (btn) btn.disabled = false; }
+  } catch { msg('Nie udało się wysłać — sprawdź, czy jesteś w sieci Wi-Fi sali.', 'bad'); if (btn) btn.disabled = false; }
+}
+async function go() {
+  const q = $('#q').value.trim(); if (!q) { $('#q').focus(); return; }
+  const id = ytIdOf(q);
+  if (id) { $('#list').replaceChildren(); ask(id, '', null); $('#q').value = ''; return; }
+  $('#q').blur(); msg('Szukam…'); $('#list').replaceChildren();
+  try {
+    const r = await fetchT(`/api/g/ytsearch?g=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}`, {}, 15000);
+    if (r.status === 403) { msg('Prośby są teraz wyłączone.', 'bad'); return; }
+    const res = parseYTResults(await r.text(), 12);
+    msg(res.length ? '' : 'Nic nie znalazłem — spróbuj innych słów albo wklej link z YouTube.');
+    for (const t of res) {
+      const d = document.createElement('div'); d.className = 'it';
+      d.innerHTML = '<img alt="" loading="lazy"><div><b></b><small></small></div><button>🎵 Poproś o tę piosenkę</button>';
+      const img = d.querySelector('img'); img.src = `https://i.ytimg.com/vi/${t.id}/default.jpg`; img.onerror = () => { img.style.visibility = 'hidden'; };
+      d.querySelector('b').textContent = t.title || 'wczytuję tytuł…'; d.querySelector('small').textContent = [t.channel, t.dur].filter(Boolean).join(' · ');
+      if (!t.title) fetchT(`/api/g/oembed?g=${encodeURIComponent(key)}&id=${t.id}`, {}, 8000).then(x => x.json()).then(o => { if (o.title) { t.title = o.title; d.querySelector('b').textContent = o.title; } }).catch(() => { });
+      const b = d.querySelector('button'); b.onclick = () => ask(t.id, t.title, b);
+      $('#list').append(d);
+    }
+  } catch { msg('Wyszukiwanie nie odpowiada. Możesz wkleić link z YouTube.', 'bad'); }
+}
+$('#go').onclick = go;
+$('#q').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+
+/* ---- wysyłanie zdjęć i filmów ---- */
+function upload(file, row) {
+  return new Promise(res => {
+    const x = new XMLHttpRequest();
+    x.open('POST', `/api/g/upload?g=${encodeURIComponent(key)}&name=${encodeURIComponent(file.name)}&from=${encodeURIComponent($('#from').value.trim())}`);
+    x.upload.onprogress = e => { if (e.lengthComputable) row.querySelector('i').style.width = (e.loaded / e.total * 100) + '%'; };
+    x.onload = () => { let d = {}; try { d = JSON.parse(x.responseText); } catch { } res(d.ok ? { ok: true } : { ok: false, err: d.err || 'Nie udało się wysłać.' }); };
+    x.onerror = () => res({ ok: false, err: 'Brak połączenia — sprawdź Wi-Fi sali.' });
+    x.send(file);
+  });
+}
+$('#files').onchange = async e => {
+  const files = [...e.target.files]; e.target.value = ''; if (!files.length) return;
+  msg(`Wysyłam ${files.length} ${files.length === 1 ? 'plik' : 'pliki/plików'}… nie zamykaj tej strony.`, '', '#umsg');
+  let ok = 0;
+  for (const f of files) {
+    const row = document.createElement('div'); row.className = 'up';
+    row.innerHTML = '<span></span><small></small><div class="bar"><i></i></div>';
+    row.querySelector('span').textContent = f.name; row.querySelector('small').textContent = (f.size / 1048576).toFixed(1) + ' MB';
+    $('#ups').prepend(row);
+    const r = await upload(f, row);
+    row.classList.add(r.ok ? 'ok' : 'bad'); row.querySelector('small').textContent = r.ok ? '✓ wysłano' : r.err;
+    if (r.ok) { ok++; row.querySelector('i').style.width = '100%'; }
+  }
+  msg(ok ? `Dziękujemy! Wysłano: ${ok} z ${files.length}. 💛` : 'Nie udało się wysłać — spróbuj ponownie.', ok ? 'ok' : 'bad', '#umsg');
+};
+
+/* ---- galeria ---- */
+const G = { items: [], cur: -1, loaded: false, io: null };
+const gurl = (ep, id, extra = '') => `/api/g/${ep}?g=${encodeURIComponent(key)}&id=${id}${extra}`;
+async function loadGallery() {
+  if (G.loaded) return;
+  const box = $('#gal'); box.innerHTML = '<p class="msg">Wczytuję…</p>';
+  try { const d = await (await fetchT(gurl('gallery', 0))).json(); G.items = d.items || []; } catch { G.items = []; }
+  if (!G.items.length) { box.innerHTML = '<p class="msg">Galeria jest jeszcze pusta.</p>'; return; }
+  G.loaded = true; box.replaceChildren();
+  G.io = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting) { G.io.unobserve(e.target); e.target.style.backgroundImage = `url("${gurl('gthumb', e.target.dataset.id)}")`; } }, { rootMargin: '300px' });
+  let part = null, grid = null;
+  G.items.forEach((it, i) => {
+    if (it.part !== part || !grid) { part = it.part; if (part) { const h = document.createElement('div'); h.className = 'gh'; h.textContent = part; box.append(h); } grid = document.createElement('div'); grid.className = 'grid'; box.append(grid); }
+    const c = document.createElement('div'); c.className = 'c'; c.dataset.id = it.id;
+    if (it.kind === 'video') c.innerHTML = '<i>▶ film</i>';
+    c.onclick = () => view(i); grid.append(c); G.io.observe(c);
+  });
+}
+function view(i) {
+  const it = G.items[i]; if (!it) return; G.cur = i;
+  const m = $('#vMedia'); m.replaceChildren();
+  const el = document.createElement(it.kind === 'video' ? 'video' : 'img');
+  el.src = gurl('gfile', it.id, it.kind === 'video' ? '' : '&v=disp'); if (it.kind === 'video') { el.controls = true; el.playsInline = true; }
+  m.append(el);
+  $('#vName').textContent = [it.part, it.t].filter(Boolean).join(', ') || it.name;
+  $('#vDl').href = gurl('gfile', it.id, '&dl=1'); $('#vDl').setAttribute('download', it.name);
+  $('#viewer').hidden = false;
+}
+$('#vClose').onclick = () => { $('#viewer').hidden = true; $('#vMedia').replaceChildren(); };
+$('#vPrev').onclick = () => view(Math.max(0, G.cur - 1));
+$('#vNext').onclick = () => view(Math.min(G.items.length - 1, G.cur + 1));
+let tx = null; $('#vMedia').addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+$('#vMedia').addEventListener('touchend', e => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx; tx = null; if (Math.abs(dx) > 50) view(G.cur + (dx < 0 ? 1 : -1)); });
+
+/* ---- start ---- */
+(async () => {
+  if (!key) { $('#noKey').hidden = false; return; }
+  let st = {};
+  try { const r = await fetchT(`/api/g/state?g=${encodeURIComponent(key)}`, {}, 6000); st = r.status === 403 ? { off: true } : await r.json(); } catch { st = { err: true }; }
+  if (st.off) { $('#sub').textContent = 'Ten kod jest nieaktywny — organizatorzy wyłączyli funkcje dla gości.'; return; }
+  if (st.err) { $('#sub').textContent = 'Brak połączenia — sprawdź, czy jesteś w sieci Wi-Fi sali.'; }
+  F.songs = st.songs !== false; F.upload = !!st.upload; F.gallery = !!st.gallery;
+  const on = Object.keys(F).filter(k => F[k]);
+  document.querySelectorAll('.tabs button').forEach(b => { b.hidden = !F[b.dataset.t]; });
+  $('#tabs').hidden = on.length < 2;
+  const title = st.title ? `${st.title} 📱` : 'Dołącz do pokazu 📱';
+  $('#h1').textContent = on.length === 1 && on[0] === 'songs' ? 'Zaproponuj piosenkę 🎵' : on.length === 1 && on[0] === 'upload' ? 'Wyślij zdjęcia 📷' : on.length === 1 ? 'Galeria zdjęć 🖼' : title;
+  $('#sub').textContent = on.length > 1 ? 'Zaproponuj piosenkę, wyślij swoje zdjęcia albo obejrzyj i pobierz zdjęcia z wydarzenia.' : on[0] === 'songs' ? 'Wyszukaj utwór z YouTube i wyślij prośbę — organizatorzy zdecydują, kiedy zagra.' : on[0] === 'upload' ? 'Wyślij zdjęcia i filmy z telefonu — trafią do pokazu.' : 'Dotknij zdjęcia, aby je obejrzeć i pobrać.';
+  const want = LSx('guestTab'); tab(F[want] ? want : on[0] || 'songs');
+})();
+</script>
+</body>
+</html>

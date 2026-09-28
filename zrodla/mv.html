@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Teledysk</title>
+<style>
+html,body{margin:0;height:100%;background:#000;overflow:hidden}
+#p{position:absolute;inset:0;width:100%;height:100%;border:0}
+</style>
+</head>
+<body>
+<div id="p"></div>
+<script>
+// Odtwarzacz teledysku na ekranie pokazu. Strona ma zwykły adres (http://localhost),
+// dzięki czemu YouTube zgadza się ją odtworzyć także w oknie na telewizorze.
+'use strict';
+const q = new URLSearchParams(location.search);
+const id = q.get('v');
+const host = q.get('h') === 'nocookie' ? 'https://www.youtube-nocookie.com' : 'https://www.youtube.com';
+let player = null;
+const hook = (n, a) => { try { parent.mvHook && parent.mvHook(n, a); } catch (e) { } };
+window.mvApi = {
+  play: () => { try { player.playVideo(); } catch (e) { } },
+  pause: () => { try { player.pauseVideo(); } catch (e) { } },
+  setVolume: v => { try { player.setVolume(v); player.unMute(); } catch (e) { } },
+  state: () => { try { return player.getPlayerState(); } catch (e) { return -2; } },
+  title: () => { try { return player.getVideoData().title || ''; } catch (e) { return ''; } },
+  time: () => { try { return [player.getCurrentTime() || 0, player.getDuration() || 0]; } catch (e) { return [0, 0]; } },
+  seek: t => { try { player.seekTo(Math.max(0, t), true); } catch (e) { } },
+};
+window.onYouTubeIframeAPIReady = () => {
+  player = new YT.Player('p', {
+    host, videoId: id, width: '100%', height: '100%',
+    playerVars: { autoplay: 1, controls: 0, rel: 0, playsinline: 1, modestbranding: 1, iv_load_policy: 3, disablekb: 1, fs: 0, origin: location.origin },
+    events: {
+      onReady: e => { e.target.setVolume(q.has('vol') ? +q.get('vol') : 100); e.target.playVideo(); hook('ready'); },
+      onStateChange: e => hook('state', e.data),
+      onError: e => hook('error', e.data),
+    },
+  });
+};
+</script>
+<script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>

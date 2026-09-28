@@ -1,0 +1,1017 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Pokazy</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💍</text></svg>">
+<link rel="stylesheet" href="lib/fonts.css">
+<link rel="stylesheet" href="lib/motywy.css">
+<script src="lib/exifr.js"></script>
+<script>if (!window.exifr) document.write('<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"><\/script>');</script>
+<style>
+:root{
+  --bg:#221925; --panel:#2B2030; --panel2:#35293A; --line:#46384B;
+  --text:#F2E9DC; --muted:#B5A5B1; --gold:#D8B878; --gold2:#EDD4A0;
+  --sage:#9FBBA6; --rose:#E2939A;
+  --serif:'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --sans:'Jost', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --tile:150px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+[hidden]{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---------- layout ---------- */
+#app{display:grid;grid-template-rows:64px 1fr;grid-template-columns:var(--sbw,320px) 1fr auto;height:100%}
+header.top{grid-column:1/-1;display:flex;align-items:center;gap:20px;padding:0 20px 0 24px;border-bottom:1px solid var(--line)}
+.brand{font:italic 500 28px/1 var(--serif);color:var(--gold2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw}
+.summary{color:var(--muted);font-size:14px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+aside.side{overflow:auto;border-right:1px solid var(--line);padding:8px 0 40px}
+main{overflow:auto;position:relative}
+#drawer{width:0;overflow:hidden;border-left:1px solid var(--line);background:var(--panel);transition:width .25s}
+#drawer.open{width:380px;overflow:auto}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:8px 16px;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s}
+.btn:hover{border-color:var(--gold);background:#3E3043}
+.btn.primary{background:var(--gold);border-color:var(--gold);color:#2A1D22;font-weight:600}
+.btn.primary:hover{background:var(--gold2)}
+.btn.small{padding:5px 12px;font-size:13px}
+.btn.ghost{background:none}
+.btn:disabled{opacity:.45;cursor:default}
+.linkbtn{background:none;border:0;color:var(--gold2);cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px}
+
+/* ---------- sidebar ---------- */
+details.sec{border-bottom:1px solid var(--line)}
+details.sec>summary{list-style:none;cursor:pointer;padding:14px 22px;font:italic 500 21px/1.2 var(--serif);color:var(--gold2);display:flex;justify-content:space-between;align-items:center}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary::after{content:'';width:8px;height:8px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg);transition:transform .2s;margin-right:4px}
+details.sec[open]>summary::after{transform:rotate(-135deg)}
+.sec-body{padding:0 22px 18px;display:grid;gap:12px}
+.field{display:grid;gap:4px}
+.field>span,.lbl{font-size:13px;color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hint{font-size:13px;color:var(--muted);line-height:1.45;margin:0}
+.hint b{color:var(--text);font-weight:500}
+input[type=text],input[type=url],input[type=date],input[type=number],input[type=datetime-local],select{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;width:100%;min-width:0}
+input[type=number]{width:86px}
+input[type=range]{accent-color:var(--gold);width:100%}
+label.chk{display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-size:14px}
+label.chk input{accent-color:var(--gold);margin-top:4px}
+.srclist,.devlist{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.srclist li{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.srclist li span:last-child{color:var(--muted)}
+.dev{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.dev:first-child{border-top:0}
+.dev .nm{font-size:14px}
+.dev .meta{font-size:12px;color:var(--muted);grid-column:1}
+.dev input{grid-row:1/3;grid-column:2}
+.seg{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg label{flex:1;text-align:center;padding:6px 8px;font-size:13px;cursor:pointer}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){background:var(--gold);color:#2A1D22;font-weight:600}
+.seg label:has(input:focus-visible){outline:2px solid var(--gold2);outline-offset:-2px}
+.warn{border-left:2px solid var(--rose);padding:6px 10px;background:#3A2530;font-size:13px;border-radius:0 6px 6px 0}
+
+/* ---------- empty state ---------- */
+#empty{min-height:100%;display:grid;place-items:center;padding:40px}
+.hero{max-width:640px;text-align:center}
+.hero h1{font:italic 400 clamp(44px,6vw,76px)/1.02 var(--serif);margin:0 0 18px;color:var(--text)}
+.hero p{color:var(--muted);font-size:17px;margin:0 auto 28px;max-width:52ch}
+.hero .rule{width:120px;height:1px;background:var(--gold);margin:0 auto 26px}
+.drop-hint{margin-top:22px;font-size:14px;color:var(--muted)}
+.reopen{margin-top:26px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+body.dragging main{outline:2px dashed var(--gold);outline-offset:-12px}
+
+/* ---------- toolbar ---------- */
+#toolbar{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 20px;border-bottom:1px solid var(--line)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:none;border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--text);color:var(--bg);border-color:var(--text)}
+.chip .n{opacity:.7;margin-left:4px}
+.chip.alert:not([aria-pressed=true]){border-color:var(--rose);color:var(--rose)}
+#search{width:190px}
+.grow{flex:1}
+.progress{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.progress .bar{width:120px;height:3px;background:var(--line);border-radius:2px;overflow:hidden}
+.progress .bar i{display:block;height:100%;background:var(--gold);width:0;transition:width .3s}
+#notice{margin:16px 20px 0;padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+
+/* ---------- timeline ---------- */
+#timeline{padding:4px 20px 80px}
+.dayhead{display:flex;align-items:baseline;gap:16px;margin:30px 0 4px;padding-bottom:10px;border-bottom:1px solid var(--gold)}
+.dayhead h2{font:italic 500 40px/1 var(--serif);margin:0;color:var(--gold2)}
+.dayhead .d{color:var(--muted);font-size:15px}
+.dayhead .c{margin-left:auto;color:var(--muted);font-size:13px}
+.hourhead{font:600 13px/1 var(--sans);color:var(--muted);margin:18px 0 8px;letter-spacing:.02em}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--tile),1fr));gap:8px}
+.tile{position:relative;border-radius:6px;overflow:hidden;background:var(--panel);cursor:pointer;aspect-ratio:1;outline-offset:2px;border:0;padding:0;display:block;width:100%;text-align:left}
+.tile img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .3s}
+.tile img.ok{opacity:1}
+.tile .cap{position:absolute;left:0;right:0;bottom:0;padding:18px 7px 5px;background:linear-gradient(transparent,rgba(20,12,18,.85));display:flex;gap:4px;align-items:center;font-size:12px;flex-wrap:wrap}
+.tile .t{font-weight:500;margin-right:auto}
+.b{padding:0 6px;border-radius:4px;font-size:11px;line-height:17px;background:rgba(255,255,255,.16)}
+.b.vid{background:rgba(0,0,0,.55)}
+.b.match{background:var(--sage);color:#1E2A22}
+.b.rev{background:var(--rose);color:#3A1820}
+.b.man{background:var(--gold);color:#2A1D22}
+.tile.off img{opacity:.28}
+.tile.off .cap{opacity:.7}
+.tile.sel{box-shadow:0 0 0 3px var(--gold2)}
+.tile.dragover-l{box-shadow:inset 4px 0 0 var(--gold2)}
+.tile.dragover-r{box-shadow:inset -4px 0 0 var(--gold2)}
+.tile.dragging{opacity:.35}
+.tile .ph{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:12px;padding:8px;text-align:center;word-break:break-all}
+.tile img.ok+.ph{display:none}
+
+/* ---------- drawer ---------- */
+.dw{padding:18px 22px 40px;display:grid;gap:16px;width:380px}
+.dw-top{display:flex;justify-content:space-between;align-items:center}
+.dw-top h3{font:italic 500 24px/1.1 var(--serif);margin:0;color:var(--gold2)}
+.dw-prev{border-radius:8px;overflow:hidden;background:#000;aspect-ratio:4/3;display:grid;place-items:center;cursor:pointer}
+.dw-prev img{max-width:100%;max-height:100%;object-fit:contain}
+.dw-name{font-size:14px;word-break:break-all}
+.dw-name small{display:block;color:var(--muted)}
+.why{font-size:14px;padding:10px 12px;border-radius:8px;background:var(--panel2);line-height:1.45}
+.cands{display:grid;gap:4px}
+.cands label{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:13px}
+.cands label:has(input:checked){border-color:var(--gold)}
+.cands input{accent-color:var(--gold);grid-row:1/3;margin-top:3px}
+.cands .v{color:var(--muted)}
+
+/* ---------- show ---------- */
+#show{position:fixed;inset:0;background:#000;z-index:100;overflow:hidden;color:#fff}
+#show.idle{cursor:none}
+.layer{position:absolute;inset:0;opacity:0;transition:opacity .9s ease}
+.layer.on{opacity:1}
+.layer .bg{position:absolute;inset:-8%;background-size:cover;background-position:center;filter:blur(38px) brightness(.42) saturate(1.15)}
+.layer .fg{position:absolute;inset:0;display:flex}
+.layer .fg.pair{gap:1.2vw;padding:0 1.2vw}
+.cell{position:relative;flex:1;overflow:hidden}
+.kb{position:absolute;inset:0;transform-origin:var(--ox,50%) var(--oy,50%)}
+.kb img,.kb video{position:absolute;display:block;transform-origin:center}
+@keyframes kb{from{transform:scale(1)}to{transform:scale(1.07)}}
+.card{margin:auto;text-align:center;padding:4vh 6vw;color:var(--text)}
+.card .date{font:400 clamp(16px,1.9vw,30px)/1.3 var(--sans);color:var(--muted);letter-spacing:.04em}
+.card h1{font:italic 400 clamp(64px,11vw,190px)/1 var(--serif);margin:.12em 0 .18em;color:var(--gold2)}
+.card .rule{height:1px;background:var(--gold);width:0;margin:0 auto;transition:width 1.8s cubic-bezier(.2,.7,.2,1) .3s}
+.layer.on .card .rule{width:min(34vw,420px)}
+.card .names{font:italic 400 clamp(56px,9vw,160px)/1.02 var(--serif);color:var(--gold2);margin:0 0 .25em}
+.caption{position:absolute;left:3vw;bottom:3.2vh;font:italic 400 clamp(18px,2vw,34px)/1 var(--serif);color:rgba(255,255,255,.88);text-shadow:0 1px 12px rgba(0,0,0,.7);transition:opacity .6s;pointer-events:none}
+.hud{position:absolute;left:0;right:0;z-index:11;transition:opacity .35s;opacity:0;pointer-events:none}
+#show.ui .hud{opacity:1;pointer-events:auto}
+#show.ui .caption{opacity:0}
+.hud.top{top:0;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(rgba(0,0,0,.65),transparent)}
+.hud.bottom{bottom:0;padding:30px 22px 20px;background:linear-gradient(transparent,rgba(0,0,0,.8))}
+.hud .pos{font-size:15px;color:#ddd}
+.ctrls{display:flex;gap:10px;align-items:center;margin-top:12px}
+.ibtn{width:46px;height:46px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.35);display:grid;place-items:center;cursor:pointer;color:#fff}
+.ibtn:hover{border-color:var(--gold2)}
+.ibtn svg{width:22px;height:22px}
+.ibtn.off{opacity:.45}
+.np{font-size:14px;color:#ccc;margin-left:8px;max-width:40vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ribbon{position:relative;display:flex;gap:10px;height:40px;cursor:pointer}
+.rseg{position:relative;flex:1;border-top:1px solid rgba(255,255,255,.35);min-width:60px}
+.rseg .lab{position:absolute;left:0;top:-24px;font:italic 500 17px/1 var(--serif);color:var(--gold2);white-space:nowrap}
+.rseg .tick{position:absolute;top:0;width:1px;height:7px;background:rgba(255,255,255,.4)}
+.rseg .tick span{position:absolute;top:10px;left:-14px;width:28px;text-align:center;font-size:11px;color:#bbb}
+.marker{position:absolute;top:-6px;width:2px;height:13px;background:var(--gold2);transition:left .4s}
+.marker::before{content:'';position:absolute;top:-3px;left:-3px;width:8px;height:8px;border-radius:50%;background:var(--gold2)}
+.rtip{position:absolute;top:-30px;padding:2px 7px;background:#000;border:1px solid var(--line);border-radius:4px;font-size:12px;pointer-events:none;transform:translateX(-50%)}
+.flash{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);background:rgba(0,0,0,.72);padding:14px 22px;border-radius:12px;font-size:18px;max-width:70vw;text-align:center;opacity:0;transition:opacity .3s;pointer-events:none}
+.flash.on{opacity:1}
+.partrow{display:grid;grid-template-columns:26px minmax(0,1fr) 104px;gap:6px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.partrow .pl{font-size:12px;color:var(--muted);text-align:right}
+.partrow .del{grid-column:3;grid-row:1;justify-self:end}
+.partrow input[type=text]{grid-column:1/3;grid-row:1;font-weight:500}
+.partrow select,.partrow input{min-width:0;padding:6px 8px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;font:inherit}
+.partrow input[type=time]{color-scheme:dark}
+.partrow input:disabled{opacity:.45}
+.partrow .linkbtn{text-decoration:none;font-size:15px}
+#dayLabels{display:grid;gap:8px}
+.timerow{display:flex;gap:8px;align-items:center}
+.timerow input{flex:1;min-width:0}
+.timerow .btn[hidden]{display:none}
+/* wybór utworu (wyszukiwanie / playlista) */
+.pk{display:grid;gap:8px}
+.pk-in{display:flex;gap:6px}
+.pk-in input{flex:1;min-width:0;font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.pk-tabs{display:flex;gap:6px}
+.pk-tabs button{font:inherit;font-size:13px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:none;color:var(--muted);cursor:pointer}
+.pk-tabs button.on{border-color:var(--gold);color:var(--gold2)}
+.pk-msg{margin:0}
+.pk-msg:empty{display:none}
+.pk-list{display:grid;gap:6px;max-height:320px;overflow:auto;padding-right:4px}
+.pk-row{display:grid;grid-template-columns:64px minmax(0,1fr);grid-template-areas:'im t' 'im a';column-gap:10px;row-gap:6px;align-items:center;padding:6px;border-radius:10px;background:var(--panel2)}
+.pk-row img{grid-area:im;align-self:start}
+.pk-row .pk-t{grid-area:t}
+.pk-acts{grid-area:a;display:flex;gap:4px;flex-wrap:wrap}
+.pk-row img{width:64px;height:48px;object-fit:cover;border-radius:6px;background:#000}
+.pk-t{display:grid;min-width:0}
+.pk-t b{font-weight:500;font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pk-t small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mvask .pk-list{max-height:40vh}
+.mvask .chips .chip{font-size:12px;padding:4px 10px}
+#annAsk input,#annAsk select{font:inherit;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+/* tło przerwy */
+.annbg{position:absolute;inset:0;overflow:hidden;z-index:0}
+.ann-in{position:relative;z-index:1}
+.announce.withbg{background:rgba(10,6,12,.2);backdrop-filter:none;-webkit-backdrop-filter:none}
+.abg{position:absolute;inset:-6%;width:112%;height:112%;object-fit:cover;filter:blur(20px) brightness(.5) saturate(1.1);opacity:0;transition:opacity 2.6s ease;animation:abgz 18s linear forwards}
+.abg.on{opacity:1}
+@keyframes abgz{from{transform:scale(1)}to{transform:scale(1.09)}}
+/* prośby gości */
+.gqlist{display:grid;gap:6px}
+.gq{display:grid;gap:6px;padding:8px 10px;border-radius:10px;background:var(--panel2)}
+.gq span{display:grid}.gq b{font-weight:500;font-size:14px}.gq small{font-size:12px;color:var(--muted)}
+.gq .row{gap:4px;flex-wrap:wrap}
+.qrboard{position:absolute;right:3vw;bottom:4vh;z-index:7;opacity:0;transition:opacity .6s}
+.qrboard.on{opacity:1}
+.qrb-in{display:flex;gap:2.4vw;align-items:center;padding:2.2vw 2.6vw;border-radius:18px;background:rgba(28,20,31,.92);border:1px solid var(--gold);box-shadow:0 20px 60px rgba(0,0,0,.5);cursor:pointer}
+.qrb-code{background:#fff;border-radius:12px;padding:.6vw;line-height:0}
+.qrb-code svg{width:min(40vh,460px);height:min(40vh,460px)}
+#show.annbrk .qrb-code svg{width:min(30vh,340px);height:min(30vh,340px)}
+#show.annbrk.qron .announce:not(.top){place-items:start center;padding-top:6vh}
+#show.annbrk.qron .announce:not(.top) .ann-in{max-width:60vw;padding:3.5vh 4vw}
+#show.qron .nowplay{opacity:0!important}
+.qrb-t{display:grid;gap:1.4vh;max-width:28vw}
+.qrb-t b{font:italic 500 clamp(30px,3.6vw,70px)/1.05 var(--serif);color:var(--gold2)}
+.qrb-t span{font:clamp(16px,1.6vw,30px)/1.35 var(--sans);color:var(--text)}
+.qrb-t small{font:clamp(12px,1vw,18px)/1.3 var(--sans);color:var(--muted);word-break:break-all}
+/* odtwarzacz muzyki YouTube w panelu na laptopie — mniejszy, nie zasłania paska „Następne” */
+body.console-on.ytvis .cbottom{padding-bottom:78px}
+/* powiadomienie o prośbie gościa */
+.reqnote{position:absolute;right:3vw;bottom:4vh;z-index:8;max-width:40vw;display:grid;gap:4px;padding:1.4vh 1.6vw;border-radius:16px;background:rgba(28,20,31,.92);border:1px solid var(--gold);box-shadow:0 12px 40px rgba(0,0,0,.5);opacity:0;transform:translateY(12px);transition:opacity .5s,transform .5s;pointer-events:none}
+.reqnote.on{opacity:1;transform:none}
+.reqnote span{font:500 clamp(12px,1.05vw,20px)/1.2 var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+.reqnote b{font:italic 500 clamp(22px,2.3vw,42px)/1.15 var(--serif);color:#fff}
+.reqnote small{font:clamp(13px,1.1vw,20px)/1.3 var(--sans);color:#ddd}
+#show.qron .reqnote{bottom:auto;top:4vh}
+.creqnote{position:fixed;right:18px;bottom:160px;z-index:120;max-width:380px;display:grid;gap:3px;padding:12px 16px;border-radius:14px;background:var(--panel);border:1px solid var(--gold);box-shadow:0 12px 40px rgba(0,0,0,.5);opacity:0;transform:translateY(10px);transition:opacity .4s,transform .4s;pointer-events:none}
+.creqnote.on{opacity:1;transform:none}
+.creqnote span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.creqnote b{font:italic 500 20px/1.2 var(--serif);color:var(--gold2)}
+.creqnote small{color:var(--muted);font-size:13px}
+/* motywy, miejsca, goście */
+.themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px}
+.themes button{display:grid;gap:4px;padding:6px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;font:inherit;font-size:12px}
+.themes button.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.themes .sw{height:30px;border-radius:6px;display:grid;place-items:center;font-size:15px}
+.dayplaces{display:grid;gap:4px}
+.dayplaces .dp{display:flex;gap:6px;align-items:center;font-size:13px}
+.dayplaces .dp span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dayplaces .dp small{color:var(--muted)}
+.app-only-f{opacity:.45;pointer-events:none}
+body.app .app-only-f{opacity:1;pointer-events:auto}
+body.app .app-only-note{display:none}
+.card.withmap{display:grid;gap:1.6vh;align-content:center;justify-items:center;padding:3vh 4vw;width:100%;height:100%;box-sizing:border-box}
+.card.withmap h1,.card.withmap .names{font-size:clamp(40px,6vw,108px);margin:0}
+.daymap{width:min(86vw,150vh);max-height:62vh;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.55);overflow:hidden;background:#1a1a1a}
+.daymap .tiles{filter:saturate(.7) brightness(.92) contrast(1.05)}
+.gpend{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px}
+.gpend .gp{position:relative;display:grid;gap:3px}
+.gpend img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;background:#000}
+.gpend .gp small{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gpend .gp .row{gap:3px}.gpend .gp button{flex:1;padding:2px 0}
+/* projekty i aplikacja */
+.app-only{display:none}
+body.app .app-only{display:grid}
+.projbtn{font:inherit;font-size:13px;color:var(--gold2);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}
+.projbtn:hover{border-color:var(--gold)}
+.plist{display:grid;gap:8px}
+.prow{display:flex;gap:8px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--panel2);border:1px solid var(--line)}
+.prow.cur{border-color:var(--gold)}
+.prow .pn{flex:1;min-width:0;display:grid}.prow .pn b{font-weight:500}.prow .pn small{color:var(--muted);font-size:12px}
+.tpl{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.tpl button{display:grid;gap:2px;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;font:inherit}
+.tpl button.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.tpl button b{font-size:15px;font-weight:500}.tpl button small{font-size:12px;color:var(--muted)}
+.updbar{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:400;display:flex;gap:10px;align-items:center;padding:10px 14px;border-radius:14px;background:var(--panel);border:1px solid var(--gold);box-shadow:0 12px 40px rgba(0,0,0,.5);font-size:14px}
+.updbar[hidden]{display:none}
+/* przygotowanie zdjęć */
+.prepinfo{font-size:12px;color:var(--sage);margin-left:8px;white-space:nowrap}
+/* przeciągane krawędzie paneli */
+.splitv{cursor:col-resize;border-radius:4px;background:transparent;position:relative}
+.splitv::after{content:'';position:absolute;left:3px;top:0;bottom:0;width:2px;border-radius:2px;background:var(--line)}
+.splitv:hover::after,.splitv.drag::after{background:var(--gold)}
+.splith{cursor:row-resize;position:relative;margin:0 18px}
+.splith::after{content:'';position:absolute;left:0;right:0;top:3px;height:2px;border-radius:2px;background:var(--line)}
+.splith:hover::after,.splith.drag::after{background:var(--gold)}
+.cbottom{overflow:auto;min-height:0}
+.sbsplit{position:fixed;top:64px;bottom:0;left:calc(var(--sbw,320px) - 4px);width:8px;cursor:col-resize;z-index:20}
+body.showing .sbsplit,body.console-on .sbsplit{display:none}
+.sbsplit:hover,.sbsplit.drag{background:linear-gradient(90deg,transparent 3px,var(--gold) 3px,var(--gold) 5px,transparent 5px)}
+.kmnow{display:grid}.kmnow b{font:italic 500 18px/1.2 var(--serif);color:var(--gold2)}.kmnow small{font-size:12px;color:var(--muted)}
+/* przegląd pokazu */
+.mbox.wide{width:min(1200px,96vw)}
+.brgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
+.brhead{grid-column:1/-1;font:italic 500 24px/1.1 var(--serif);color:var(--gold2);margin-top:10px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.brt{display:grid;gap:4px;background:none;border:0;padding:0;cursor:pointer;text-align:left;color:var(--text)}
+.brt .nxims{width:100%;height:88px}
+.brim{display:block;min-height:88px;border-radius:6px;background:var(--panel2)}
+.brt small{font-size:12px;color:var(--muted)}
+.brt.past{opacity:.45}
+.brt.cur .nxims{box-shadow:0 0 0 3px var(--sage)}
+.brt.cur small{color:var(--sage)}
+.brt.skip{opacity:.3}
+.brt:hover .nxims{outline:2px solid var(--gold2)}
+.pvbig{display:flex;gap:10px;justify-content:center;align-items:center;background:#000;border-radius:10px;min-height:240px;max-height:58vh;overflow:hidden;padding:6px}
+.pvbig img,.pvbig video{max-width:100%;max-height:56vh;object-fit:contain;min-width:0;flex:1 1 0}
+.pvacts{flex-wrap:wrap}
+/* czas do końca */
+.remainhud{font-size:13px;color:#ddd;margin:0 0 30px;font-variant-numeric:tabular-nums}
+.remainhud:empty{display:none}
+.remainchip{position:absolute;left:50%;top:3vh;transform:translate(-50%,-8px);z-index:8;max-width:90vw;padding:10px 22px;border-radius:16px;background:rgba(20,14,22,.85);border:1px solid var(--gold);color:#fff;font:500 clamp(14px,1.3vw,22px)/1.3 var(--sans);text-align:center;opacity:0;transition:opacity .5s,transform .5s;pointer-events:none}
+.remainchip.on{opacity:1;transform:translate(-50%,0)}
+.cremain{flex-basis:100%;font-size:13px;color:var(--sage)}
+.cremain:empty{display:none}
+/* pary zdjęć */
+.b.pair{background:#5A4520;color:var(--gold2)}
+.tile.paired{box-shadow:0 0 0 2px var(--gold)}
+.nxims{display:flex;align-items:center;gap:2px;width:112px;height:72px;border-radius:6px;overflow:hidden;background:#000}
+.nxims img{flex:1;min-width:0;height:100%;object-fit:cover}
+.nxims.two{box-shadow:0 0 0 2px var(--gold)}
+.nxlink{font-style:normal;color:var(--gold2);font-size:12px;margin:0 -1px;z-index:1}
+.nx.pair small{color:var(--gold2)}
+.nx:hover .nxims{outline:2px solid var(--gold2)}
+/* legenda */
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}
+.legend div{display:flex;gap:10px;align-items:baseline;font-size:14px}
+.legend kbd{flex:none;min-width:64px;text-align:center;padding:2px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);font:600 13px var(--sans);color:var(--gold2)}
+@media (max-width:700px){.legend{grid-template-columns:1fr}}
+/* oś teledysku */
+.mvshield{position:absolute;inset:0;z-index:1}
+.mvbar{display:grid;gap:8px;margin-bottom:14px}
+.mvbar[hidden]{display:none}
+.mvbar b{font:italic 500 clamp(18px,1.6vw,28px)/1.2 var(--serif);color:var(--gold2)}
+.mvbar .vbar{margin:0}
+#show.mvon .hud.bottom .ribbon,#show.mvon .hud.bottom .ctrls{display:none}
+/* teledysk na ekranie */
+.mvwrap{position:absolute;inset:0;z-index:9;background:#000;opacity:0;transition:opacity .6s ease}
+.mvwrap.on{opacity:1}
+.mvwrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.mvmsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:70vw;text-align:center;color:#ddd;font:500 clamp(16px,1.6vw,26px)/1.4 var(--sans)}
+.mvask{position:absolute;left:50%;bottom:120px;transform:translateX(-50%);z-index:12;display:grid;gap:10px;width:min(680px,92vw);max-height:calc(100vh - 150px);overflow:auto;padding:18px 20px;border-radius:14px;background:rgba(28,20,31,.96);border:1px solid var(--gold);box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.mvask[hidden]{display:none}
+.mvask b{font:italic 500 22px/1.1 var(--serif);color:var(--gold2)}
+.mvask .pk-t b{font:500 14px/1.3 var(--sans);color:var(--text)}
+.mvask small b{font:inherit;font-weight:600;color:var(--text)}
+.mvask input{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.mvask small{color:var(--muted);font-size:12px}
+.ibtn.txt.on{border-color:var(--rose);color:#F3C6CA}
+.mvstate{display:grid;gap:8px;padding:8px 10px;border-radius:10px;background:var(--panel2)}
+.mvstate #kMVTitle{font:italic 500 17px/1.2 var(--serif);color:var(--gold2)}
+.mvstate b{min-width:44px;text-align:center;font-size:13px}
+#kMVIn{font:inherit;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+/* szybki przegląd */
+.review{position:fixed;inset:0;z-index:150;background:#0d0a0e;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto}
+.review[hidden]{display:none}
+.rv-top{display:flex;gap:14px;align-items:center;padding:10px 16px;background:rgba(34,25,37,.9);border-bottom:1px solid var(--line)}
+.rv-info{flex:1;min-width:0;display:grid}
+.rv-info b{font:italic 500 22px/1.2 var(--serif);color:var(--gold2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rv-info span{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#rvPos{color:var(--muted);font-variant-numeric:tabular-nums}
+.rv-stage{position:relative;overflow:hidden;margin:10px 70px}
+.rvmedia{position:absolute;max-width:none}
+.rvmsg{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:16px;text-align:center;padding:20px}
+.rv-nav{position:absolute;top:50%;transform:translateY(-50%);width:54px;height:90px;border:0;border-radius:12px;background:rgba(255,255,255,.07);color:#fff;font-size:44px;line-height:1;cursor:pointer}
+.rv-nav:hover:not(:disabled){background:rgba(255,255,255,.15)}
+.rv-nav:disabled{opacity:.2;cursor:default}
+.rv-nav.prev{left:8px}.rv-nav.next{right:8px}
+.rv-bottom{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 16px;background:rgba(34,25,37,.9);border-top:1px solid var(--line)}
+.rv-keys{padding:4px 16px 8px;font-size:12px;color:var(--muted);background:rgba(34,25,37,.9)}
+.rvb{display:inline-block;margin-right:6px;padding:3px 10px;border-radius:999px;font-size:12px;background:var(--panel2);border:1px solid var(--line)}
+.rvb.ok{color:var(--sage);border-color:var(--sage)}.rvb.off{color:var(--rose);border-color:var(--rose)}
+.rvb.fav{color:var(--gold2);border-color:var(--gold)}.rvb.warn{color:var(--rose)}
+.tile.flash{box-shadow:0 0 0 3px var(--gold2)}
+/* alerty w panelu na laptopie */
+.calerts{display:grid;gap:6px}
+.calert{padding:8px 12px;border-radius:10px;font-size:13px;background:var(--panel2);border-left:3px solid var(--gold)}
+.calert.warn{border-left-color:var(--rose)}
+.calert.crit{border-left-color:var(--rose);background:#3B2227;color:#F6D3D6}
+/* dwie perspektywy */
+.duolab{position:absolute;left:50%;bottom:2.4vh;transform:translateX(-50%);z-index:2;padding:4px 14px;border-radius:999px;background:rgba(0,0,0,.55);color:#eee;font:500 clamp(11px,1vw,17px)/1.4 var(--sans);letter-spacing:.06em;white-space:nowrap;pointer-events:none}
+#show.ui .duolab{opacity:0}
+/* napisy końcowe */
+.card.credits{position:absolute;inset:0;margin:0;padding:0;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,#2B2030 0%,#120c14 70%)}
+.roll{position:absolute;left:0;right:0;top:100%;text-align:center;animation-name:roll;animation-timing-function:linear;animation-fill-mode:forwards}
+@keyframes roll{to{transform:translateY(calc(-100% - 100vh))}}
+.roll section{margin:0 auto 10vh;max-width:74vw}
+.roll h2.big{font:italic 400 clamp(56px,8vw,150px)/1 var(--serif);color:var(--gold2);margin:0}
+.roll h3{font:500 clamp(13px,1.25vw,22px)/1.2 var(--sans);letter-spacing:.32em;text-transform:uppercase;color:var(--gold);margin:0 0 2.4vh}
+.roll p{font:italic 400 clamp(26px,3.1vw,56px)/1.25 var(--serif);color:var(--text);margin:.15em 0}
+.roll .fin .rule{width:min(30vw,380px);height:1px;background:var(--gold);margin:0 auto 4vh}
+.roll .fin p{font-size:clamp(42px,5.4vw,100px);color:var(--gold2)}
+/* tryb bezpieczny */
+.lockchip{position:absolute;left:50%;bottom:6vh;transform:translateX(-50%);z-index:7;padding:1.4vh 2.6vw;border-radius:18px;background:rgba(20,14,22,.88);border:1px solid var(--gold);color:#fff;font:500 clamp(20px,2.4vw,44px)/1.2 var(--sans);letter-spacing:.04em;pointer-events:none;white-space:nowrap;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+#show.locked{cursor:none}
+.lockov{position:fixed;inset:0;z-index:250;display:grid;place-items:center;background:rgba(18,12,20,.93)}
+.lockov[hidden]{display:none}
+.lockbox{display:grid;gap:10px;justify-items:center;text-align:center;padding:30px 36px;border:1px solid var(--line);border-radius:18px;background:var(--panel)}
+.lockbox .lk{font-size:44px}
+.lockbox h3{margin:0;font:italic 500 30px/1.1 var(--serif);color:var(--gold2)}
+.lockbox input{font-size:28px;letter-spacing:.4em;text-align:center;width:220px;padding:8px}
+.reclist{display:grid;gap:6px}
+.recrow{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 12px;border-radius:10px;background:var(--panel2);font-size:14px}
+.recrow b{font-weight:500;color:var(--sage)}
+/* długość pokazu */
+.est{font-size:14px;line-height:1.45;padding:10px 12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line)}
+.est b{color:var(--gold2);font-weight:500}
+.est span{color:var(--muted);font-size:13px}
+.est .bad{color:var(--rose)}
+input[type=number],textarea,select{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+textarea{resize:vertical;width:100%;font:inherit;color:inherit}
+/* ogłoszenie i „Teraz gra” na ekranie pokazu */
+.announce{position:absolute;inset:0;z-index:6;display:grid;place-items:center;background:rgba(10,6,12,.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;transition:opacity .7s ease;pointer-events:none}
+.announce.on{opacity:1}
+.ann-in{max-width:80vw;text-align:center;padding:5vh 6vw;border:1px solid rgba(237,212,160,.45);border-radius:18px;background:rgba(34,25,37,.72);box-shadow:0 20px 80px rgba(0,0,0,.5);transform:translateY(12px);transition:transform .9s cubic-bezier(.2,.7,.2,1)}
+.announce.on .ann-in{transform:none}
+.ann-k{font:500 clamp(13px,1.2vw,20px)/1 var(--sans);letter-spacing:.32em;text-transform:uppercase;color:var(--gold)}
+.ann-rule{height:1px;width:min(18vw,220px);background:var(--gold);margin:2.2vh auto 2.6vh;opacity:.7}
+#annText{margin:0;font:italic 500 clamp(40px,6.4vw,120px)/1.08 var(--serif);color:var(--text);white-space:pre-wrap;overflow-wrap:anywhere}
+.announce.long #annText{font-size:clamp(28px,3.8vw,70px);line-height:1.15}
+.announce.top{inset:0 0 auto 0;padding-top:4vh;display:flex;justify-content:center;background:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.announce.top .ann-in{padding:2.4vh 3.8vw 2.8vh;max-width:86vw;background:rgba(28,20,31,.86);transform:translateY(-14px)}
+.announce.top.on .ann-in{transform:none}
+.announce.top .ann-rule{margin:1.3vh auto 1.5vh}
+.announce.top #annText{font-size:clamp(30px,3.9vw,72px)}
+.announce.top.long #annText{font-size:clamp(22px,2.7vw,48px)}
+#show.ui .announce.top{padding-top:80px}
+.nowplay{position:absolute;right:3vw;bottom:3.2vh;z-index:4;display:grid;gap:4px;justify-items:end;text-align:right;max-width:45vw;opacity:0;transform:translateY(8px);transition:opacity .9s ease,transform .9s ease;pointer-events:none;text-shadow:0 1px 12px rgba(0,0,0,.8)}
+.nowplay.on{opacity:1;transform:none}
+.nowplay span{font:500 clamp(13px,1.2vw,21px)/1 var(--sans);letter-spacing:.24em;text-transform:uppercase;color:var(--gold2)}
+.nowplay b{font:italic 500 clamp(26px,2.7vw,50px)/1.1 var(--serif);color:#fff}
+#show.ui .nowplay{bottom:170px}
+/* panel: ogłoszenia */
+.cann{display:grid;gap:8px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.cann .chips .chip{font-size:12px;padding:4px 10px}
+.annstate{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--gold2)}
+.annstate span{flex:1}
+/* test pokazu */
+.tprog{height:6px;border-radius:3px;background:var(--panel2);overflow:hidden}
+#tBar{height:100%;width:0;background:var(--gold);transition:width .3s}
+.tlist{display:grid;gap:8px;max-height:40vh;overflow:auto;padding-right:4px}
+.trow{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:10px;background:var(--panel2);border-left:3px solid var(--rose)}
+.trow div{flex:1;display:grid;gap:2px;min-width:0}
+.trow b{font-weight:500;word-break:break-all}
+.trow small{color:var(--muted);font-size:12px;word-break:break-all}
+.trow span{font-size:13px}
+.tinfo{margin:0;padding-left:18px;display:grid;gap:6px;font-size:14px}
+/* ulubione */
+.tile.fav::after{content:'★';position:absolute;top:4px;right:7px;color:var(--gold2);font-size:19px;text-shadow:0 1px 5px rgba(0,0,0,.8);pointer-events:none}
+.ribbon{padding-right:56px}
+.btn.on{border-color:var(--gold);color:var(--gold2)}
+/* nazwa pliku w pokazie */
+.infobox{position:absolute;left:2.4vw;top:3vh;z-index:2;max-width:62vw;display:grid;gap:8px;background:rgba(0,0,0,.58);padding:10px 16px;border-radius:10px;font:14px/1.35 var(--sans);color:#ddd;pointer-events:none;transition:top .35s}
+.infobox div{display:grid}
+.infobox b{font-size:17px;color:#fff;font-weight:500;word-break:break-all}
+.infobox small{color:#aaa;font-size:12px;word-break:break-all}
+#show.ui .infobox{top:78px}
+.ibtn.on{border-color:var(--gold2);color:var(--gold2)}
+.volwrap{display:inline-flex;align-items:center;gap:8px;height:46px;padding:0 14px;border:1px solid rgba(255,255,255,.25);border-radius:999px;background:rgba(0,0,0,.35)}
+.volwrap[hidden]{display:none}
+.volwrap svg{width:20px;height:20px}
+.volwrap input{width:120px;accent-color:var(--gold2)}
+.volwrap b{font:500 13px/1 var(--sans);min-width:40px;font-variant-numeric:tabular-nums}
+/* tryb: pokaz na telewizorze */
+body.tvbody{margin:0;background:#000;overflow:hidden}
+#show.tvmode .hud,#show.tvmode .zoomchip,#show.tvmode .infobox,#show.tvmode .flash{display:none!important}
+.tvhint{position:fixed;left:50%;bottom:7vh;transform:translateX(-50%);z-index:500;display:grid;gap:6px;text-align:center;padding:22px 30px;border-radius:14px;background:rgba(20,14,22,.86);border:1px solid rgba(237,212,160,.5);color:#fff;font:16px/1.4 var(--sans);cursor:pointer;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+.tvhint b{font:italic 500 30px/1.1 var(--serif);color:var(--gold2)}
+.tvhint small{color:#bbb;font-size:13px}
+.tvhint[hidden]{display:none}
+/* panel sterowania na laptopie */
+#console{position:fixed;inset:0;z-index:90;background:var(--bg);display:grid;grid-template-rows:auto minmax(0,1fr) 8px var(--cbh,auto)}
+#console[hidden]{display:none}
+body.console-on #app{visibility:hidden}
+body.showing #app{visibility:hidden}
+.cbar{display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid var(--line)}
+.ctitle{display:flex;align-items:baseline;gap:14px;min-width:0;flex-wrap:wrap}
+.ctitle b{font:italic 500 24px/1 var(--serif);color:var(--gold2)}
+#cPos{color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
+#cStatus{font-size:13px;color:var(--rose)}
+#cStatus.okay{color:var(--sage)}
+.cmain{display:grid;grid-template-columns:minmax(0,1fr) 8px var(--cw,330px);gap:6px;padding:14px 12px 0 18px;min-height:0}
+.cleft{display:flex;flex-direction:column;gap:10px;min-height:0}
+.pvstage{position:relative;flex:1;min-height:160px;background:#000;border-radius:10px;overflow:hidden;cursor:zoom-in;touch-action:none}
+.pvstage.panning{cursor:grabbing}
+#pvInner{position:absolute;transform-origin:0 0;overflow:hidden;pointer-events:none}
+.pvlab{position:absolute;left:10px;top:8px;z-index:3;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.55);pointer-events:none}
+.pvstage .zoomchip{top:10px}
+.pvstage .flash{font-size:15px}
+#cvbar{margin:0}
+.kctrls{margin:0 0 4px}
+.ibtn.big{width:54px;height:54px}
+.cright{overflow:auto;display:grid;align-content:start;gap:12px;padding-bottom:14px}
+body.showing .cright{padding-bottom:200px}
+.cnow{display:grid;gap:10px}
+.cfile{display:grid;gap:2px}
+.cfile b{font-size:16px;font-weight:500;word-break:break-all}
+.cfile span{font-size:13px;color:var(--text)}
+.cfile small{font-size:12px;color:var(--muted);word-break:break-all}
+.ckeys{margin-top:6px}
+.cbottom{padding:28px 18px 12px;display:grid;gap:12px;align-content:start}
+#cRibbon{margin-top:4px}
+.cnext{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center}
+.cstrip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.nx{flex:0 0 auto;width:112px;display:grid;gap:3px;background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.nx img,.nxcard{width:112px;height:72px;object-fit:cover;border-radius:6px;background:var(--panel2);display:grid;place-items:center;font:italic 16px/1.1 var(--serif);color:var(--gold2);overflow:hidden;text-align:center;padding:0 4px}
+.nx:hover img,.nx:hover .nxcard{outline:2px solid var(--gold2)}
+.nx small{font-size:12px;color:var(--muted)}
+@media (max-height:700px){.cbottom{padding-top:24px}.cnext .nx img,.cnext .nxcard{height:56px}}
+/* okna dialogowe */
+.modal{position:fixed;inset:0;z-index:300;background:rgba(12,7,14,.72);display:grid;place-items:center;padding:20px}
+.modal[hidden]{display:none}
+.mbox{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px 26px;width:min(620px,94vw);max-height:92vh;overflow:auto;display:grid;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.mbox h3{margin:0;font:italic 500 28px/1.1 var(--serif);color:var(--gold2)}
+.mbox p{margin:0}
+.choice{display:grid;gap:4px;width:100%;text-align:left;padding:14px 16px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);cursor:pointer}
+.choice b{font-size:16px;font-weight:500}
+.choice span{font-size:13px;color:var(--muted)}
+.choice:hover:not(:disabled),.choice.def{border-color:var(--gold)}
+.choice:disabled{opacity:.45;cursor:not-allowed}
+.qrwrap{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+.qr{background:#fff;border-radius:10px;padding:6px;line-height:0}
+.qr svg{width:210px;height:210px;display:block}
+.url{font:500 15px/1.4 ui-monospace,Consolas,monospace;color:var(--gold2);word-break:break-all;margin-top:6px!important}
+.okay{color:var(--sage);font-size:14px;margin-top:8px!important}
+.steps{margin:0;padding-left:20px;display:grid;gap:6px;font-size:14px}
+@media (max-width:640px){.qrwrap{grid-template-columns:1fr}.qr{justify-self:center}}
+#show{user-select:none;-webkit-user-select:none;touch-action:none}
+.zm{position:absolute;inset:0;transform-origin:0 0;transition:transform .14s ease-out}
+.zm.drag{transition:none}
+#show.zoomed .layer.on .cell{cursor:grab}
+#show.zoomed.panning .layer.on .cell{cursor:grabbing}
+#show.zoomed.idle{cursor:default}
+.zoomchip{position:absolute;left:50%;top:18px;transform:translateX(-50%);z-index:3;background:rgba(0,0,0,.66);color:#fff;border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:8px 16px;font:14px/1 var(--sans);cursor:pointer}
+.zoomchip:hover{border-color:var(--gold2)}
+.ibtn.txt{width:auto;min-width:46px;padding:0 12px;border-radius:999px;font:500 13px/1 var(--sans);font-variant-numeric:tabular-nums}
+.vbar{display:flex;align-items:center;gap:12px;margin:0 0 34px;font-size:13px;color:#ddd;font-variant-numeric:tabular-nums}
+.vbar[hidden]{display:none}
+.vtrack{position:relative;flex:1;height:16px;cursor:pointer}
+.vtrack::before{content:'';position:absolute;left:0;right:0;top:7px;height:3px;border-radius:2px;background:rgba(255,255,255,.25)}
+.vfill{position:absolute;left:0;top:7px;height:3px;border-radius:2px;background:var(--gold2);width:0}
+.vfill::after{content:'';position:absolute;right:-5px;top:-4px;width:11px;height:11px;border-radius:50%;background:var(--gold2)}
+#yt-holder{position:fixed;right:12px;bottom:12px;z-index:50;border-radius:12px;overflow:hidden;background:#140e17;border:1px solid var(--line);box-shadow:0 6px 24px rgba(0,0,0,.5);display:grid;width:320px}
+#yt-holder[hidden]{display:none}
+#yt-holder .ytvid{position:relative;width:320px;height:180px;background:#000}
+#yt-holder .ytvid iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+#yt-holder .ytbar{display:flex;align-items:center;gap:4px;padding:6px 8px}
+#yt-holder .ytt{flex:1;min-width:0;display:grid}
+#yt-holder .ytt b{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+#yt-holder .ytt small{font-size:11px;color:var(--muted)}
+#yt-holder .ytbar button{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;font-size:14px;padding:0}
+#yt-holder.bar{grid-template-columns:96px minmax(0,1fr);width:420px;align-items:center}
+#yt-holder.bar .ytvid{width:96px;height:54px}
+body.showing #yt-holder{z-index:99}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:14px;z-index:200;box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:90vw}
+
+@media (max-width:900px){
+  #app{grid-template-columns:1fr;grid-template-rows:64px auto 1fr}
+  aside.side{max-height:40vh;border-right:0;border-bottom:1px solid var(--line)}
+  #drawer.open{position:fixed;inset:64px 0 0 auto;width:min(380px,100vw);z-index:20}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition-duration:.01ms!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand" id="brand">Pokazy</div>
+    <button class="projbtn" id="projBtn" title="Projekty: wesele, wyjazd, urodziny…">📁 <span id="projName"></span> ▾</button><div class="summary" id="summary"></div><span class="prepinfo" id="prepInfo" hidden></span>
+    <button class="btn ghost" id="testBtn" title="Sprawdza, czy wszystkie pliki da się wyświetlić i odtworzyć">Sprawdź pokaz</button>
+    <button class="btn" id="favShowBtn" hidden title="Pokaz tylko ulubionych zdjęć i filmów"></button>
+    <button class="btn" id="resumeBtn" hidden></button>
+    <button class="btn primary" id="startBtn" disabled>Rozpocznij pokaz</button>
+  </header>
+
+  <div class="sbsplit" id="splitS" title="Przeciągnij, aby zmienić szerokość panelu ustawień (dwuklik — domyślna)"></div>
+  <aside class="side" id="side">
+    <details class="sec" open>
+      <summary>Pliki</summary>
+      <div class="sec-body">
+        <div class="row">
+          <button class="btn small" id="addFolder">Dodaj folder</button>
+          <button class="btn small ghost" id="addFiles">Dodaj pliki</button>
+        </div>
+        <ul class="srclist" id="srcList"></ul>
+        <p class="hint">Możesz dodać kilka folderów: z komputera, z Dysku Google (folder synchronizowany albo pobrany) i z WhatsAppa. Te same pliki z różnych miejsc zostaną wykryte jako duplikaty.</p>
+      </div>
+    </details>
+
+    <details class="sec" open>
+      <summary id="evSum">Wydarzenie</summary>
+      <div class="sec-body">
+        <label class="field"><span>Tytuł na planszy tytułowej</span><input type="text" id="sNames" placeholder="np. Ania i Tomek albo Włochy 2027"></label>
+        <div class="row">
+          <label class="field" style="flex:1"><span>Pierwszy dzień</span><input type="date" id="sStart"></label>
+          <label class="field"><span>Dni</span><input type="number" id="sDays" min="1" max="4"></label>
+        </div>
+        <div id="dayLabels" class="field"></div>
+        <div class="dayplaces" id="dayPlaces" hidden></div>
+        <label class="chk"><input type="checkbox" id="sShowPlace"> <span>Nazwa miejsca w rogu zdjęcia (z GPS telefonu, np. „Florencja”)</span></label>
+        <label class="chk"><input type="checkbox" id="sDayMaps"> <span>Mapa z przebytą trasą na planszy każdego dnia / części</span></label>
+        <label class="field"><span>Noc liczy się do poprzedniego dnia do godziny</span>
+          <select id="sBoundary"><option value="4">4:00</option><option value="5">5:00</option><option value="6">6:00</option><option value="7">7:00</option><option value="8">8:00</option></select>
+        </label>
+        <p class="hint" id="autoInfo"></p>
+      </div>
+    </details>
+
+    <details class="sec">
+      <summary>Zegary urządzeń</summary>
+      <div class="sec-body">
+        <p class="hint">Jeśli któryś telefon miał źle ustawioną godzinę, przesuń jego pliki o podaną liczbę minut (np. <b>-60</b> dla strefy czasowej przesuniętej o godzinę).</p>
+        <div class="devlist" id="devList"></div>
+      </div>
+    </details>
+
+    <details class="sec">
+      <summary>Pokaz</summary>
+      <div class="sec-body">
+        <div class="est" id="estInfo"></div>
+        <label class="chk"><input type="checkbox" id="sFit"> <span>Dopasuj pokaz do określonej długości</span></label>
+        <div class="row" id="fitRow" hidden><label class="field" style="flex:1"><span>Pokaz ma trwać (minuty)</span><input type="number" id="sFitMin" min="5" max="600" step="5"></label></div>
+        <label class="field"><span>Czas wyświetlania zdjęcia: <b id="photoSecVal"></b></span><input type="range" id="sPhotoSec" min="3" max="15" step="1"></label>
+        <label class="field"><span>Filmy</span>
+          <select id="sVideoMax"><option value="0">odtwarzaj w całości</option><option value="15">maksymalnie 15 s</option><option value="30">maksymalnie 30 s</option><option value="60">maksymalnie 1 min</option></select>
+        </label>
+        <label class="field app-only"><span>Przygotowanie filmów do płynnego odtwarzania (aplikacja)</span>
+          <select id="sVideoPrep"><option value="auto">tylko te, których ten komputer nie odtworzy płynnie</option><option value="all">wszystkie filmy HEVC z iPhone'a</option><option value="off">nie przygotowuj</option></select>
+        </label>
+        <label class="field"><span>Przewijanie filmu strzałkami ← →</span>
+          <select id="sSeek"><option value="5">co 5 sekund</option><option value="10">co 10 sekund</option><option value="15">co 15 sekund</option><option value="30">co 30 sekund</option></select>
+        </label>
+        <label class="field"><span>Głośność filmów: <b id="videoVolVal"></b></span><input type="range" id="sVideoVol" min="0" max="100" step="5"></label>
+        <label class="chk"><input type="checkbox" id="sLevel"> <span>Wyrównuj głośność filmów (ciche nagrania głośniej, głośne ciszej)</span></label>
+        <p class="hint">Głośność pojedynczego filmu (do 200%) ustawisz w jego szczegółach albo w trakcie pokazu klawiszami <b>+</b> i <b>−</b>.</p>
+        <p class="hint">Skróty w pokazie: <b>← →</b> przewija film (na zdjęciach zmienia slajd), <b>↑ ↓</b> zawsze zmienia slajd, <b>spacja</b> pauza, <b>U</b> ulubione, <b>I</b> nazwa pliku, <b>T</b> telewizor / laptop, <b>P</b> pasek z przyciskami, <b>Q</b> przerwa, <b>W</b> przerwa na papierosa, <b>Y</b> teledysk, <b>B</b> blokada, <b>L</b> legenda wszystkich skrótów. Kółko myszy przybliża zdjęcie, <b>0</b> lub <b>Esc</b> cofa zbliżenie.</p>
+        <label class="chk"><input type="checkbox" id="sInfo"> <span>Pokazuj nazwę pliku w trakcie pokazu (klawisz I)</span></label>
+        <label class="chk"><input type="checkbox" id="sFavEnd"> <span>Po ostatnim zdjęciu przejdź do ulubionych (w pętli)</span></label>
+        <div class="field"><span>Motyw plansz (kolory, czcionki, ozdobniki — pokaz i pilot)</span><div class="themes" id="themeBox"></div></div>
+        <label class="chk"><input type="checkbox" id="sBreakBg"> <span>Tło przerwy: powoli przenikające, rozmyte ulubione zdjęcia (bez ulubionych — losowe z pokazu)</span></label>
+        <label class="chk"><input type="checkbox" id="sNowPlay"> <span>„Teraz gra” — tytuł utworu na ekranie przy zmianie piosenki</span></label>
+        <label class="chk"><input type="checkbox" id="sDuo"> <span>Dwie perspektywy — ta sama chwila z dwóch różnych telefonów obok siebie</span></label>
+        <div class="row" style="align-items:center;gap:8px"><span class="hint" style="margin:0">Zdjęcia zrobione w odstępie do</span><select id="sDuoSec"><option value="10">10 s</option><option value="20">20 s</option><option value="30">30 s</option><option value="60">1 min</option></select></div>
+        <p class="hint" id="duoInfo"></p>
+        <label class="chk"><input type="checkbox" id="sPair"> <span>Pozwól na dwa pionowe zdjęcia obok siebie (tylko zrobione w odstępie do 3 minut)</span></label>
+        <label class="chk"><input type="checkbox" id="sKB"> <span>Delikatne przybliżanie zdjęć</span></label>
+        <label class="chk"><input type="checkbox" id="sCaptions"> <span>Pokazuj godzinę w rogu</span></label>
+        <label class="chk"><input type="checkbox" id="sTitle"> <span>Plansze tytułowe (imiona, dni)</span></label>
+        <label class="chk"><input type="checkbox" id="sHideDup"> <span>Pomijaj duplikaty</span></label>
+        <label class="chk"><input type="checkbox" id="sLive"> <span>Pokazuj krótkie klipy z Live Photos iPhone'a</span></label>
+        <label class="chk"><input type="checkbox" id="sUnplaced"> <span>Pliki bez ustalonej godziny pokazuj na końcu</span></label>
+        <label class="chk"><input type="checkbox" id="sLoop"> <span>Po ostatnim zdjęciu zacznij od początku</span></label>
+      </div>
+    </details>
+
+    <details class="sec">
+      <summary>Muzyka</summary>
+      <div class="sec-body">
+        <div class="seg" role="radiogroup" aria-label="Źródło muzyki">
+          <label><input type="radio" name="msrc" value="none">Bez</label>
+          <label><input type="radio" name="msrc" value="files">Pliki</label>
+          <label><input type="radio" name="msrc" value="youtube">YouTube</label>
+        </div>
+        <div id="mFiles" class="field">
+          <div class="row">
+            <button class="btn small" id="mPickFolder">Folder z muzyką</button>
+            <button class="btn small ghost" id="mPickFiles">Wybierz pliki</button>
+          </div>
+          <p class="hint" id="mFilesInfo">MP3, M4A, WAV, FLAC lub OGG.</p>
+        </div>
+        <div id="mYT" class="field">
+          <label class="field"><span>Link do playlisty lub filmu</span><input type="url" id="sYT" placeholder="https://www.youtube.com/playlist?list=…"></label>
+          <p class="warn" id="ytDiag" hidden></p>
+          <label class="chk"><input type="checkbox" id="sMvAuto"> <span>Teledysk na ekranie startuje z głośnością muzyki w tle (płynne przejście)</span></label>
+          <div class="row"><button class="btn small" id="ytTest">Sprawdź odtwarzanie</button></div>
+          <label class="field"><span>Odtwarzacz YouTube</span>
+            <select id="sYTHost">
+              <option value="auto">automatycznie (przy błędzie przełącz na tryb bez ciasteczek)</option>
+              <option value="normal">zwykły (rozpoznaje konto Premium)</option>
+              <option value="nocookie">bez ciasteczek (omija część błędów, możliwe reklamy)</option>
+            </select></label>
+          <p class="hint">Zaloguj się na YouTube w tej samej przeglądarce — z kontem Premium reklamy zwykle się nie pojawiają. Playlista musi być publiczna lub niepubliczna (nie prywatna i nie „Mix”). Utwory z zablokowanym osadzaniem są pomijane automatycznie.</p>
+          <p class="warn" id="ytFileWarn" hidden>Strona jest otwarta bezpośrednio z pliku, a YouTube wtedy odmawia odtwarzania. Uruchom ją przez <b>uruchom.bat</b> (adres zacznie się od http://localhost).</p>
+        </div>
+        <label class="field"><span>Gdy leci film</span>
+          <select id="sOnVideo">
+            <option value="pause">zatrzymaj muzykę, potem wznów</option>
+            <option value="duck">ścisz muzykę, słychać film</option>
+            <option value="mute">muzyka gra dalej, film bez dźwięku</option>
+          </select>
+        </label>
+        <label class="field"><span>Głośność muzyki</span><input type="range" id="sVol" min="0" max="100"></label>
+        <label class="chk"><input type="checkbox" id="sShuffle"> <span>Losowa kolejność utworów</span></label>
+      </div>
+    </details>
+
+    <details class="sec">
+      <summary>Napisy końcowe</summary>
+      <div class="sec-body">
+        <label class="chk"><input type="checkbox" id="sCreditsOn"> <span>Po ostatnim zdjęciu pokaż napisy końcowe (bez wracania do początku)</span></label>
+        <textarea id="sCredits" rows="9" placeholder="Dziękujemy!&#10;&#10;Rodzice&#10;Mama i Tata Panny Młodej&#10;Mama i Tata Pana Młodego&#10;&#10;Świadkowie&#10;Imię Nazwisko"></textarea>
+        <p class="hint">Każdą grupę oddziel pustą linią. Pierwsza linia grupy to nagłówek (np. „Rodzice”), kolejne to imiona. Pierwsza samotna linia to duży tytuł.</p>
+        <div class="row" style="align-items:center">
+          <label class="field" style="flex:1"><span>Tempo</span><select id="sCreditsSpeed"><option value="slow">wolno</option><option value="mid">średnio</option><option value="fast">szybko</option></select></label>
+        </div>
+        <div class="row"><button class="btn small" id="creditsPreview">Podgląd</button><button class="linkbtn" id="creditsExample">Wstaw przykład</button></div>
+        <p class="hint" id="creditsInfo"></p>
+      </div>
+    </details>
+
+    <details class="sec">
+      <summary>Tryb bezpieczny</summary>
+      <div class="sec-body">
+        <p class="hint">Blokuje laptopa przed gośćmi: klawiaturę, mysz i przypadkowe zamknięcie. Włączasz go w trakcie pokazu klawiszem <b>B</b>, przyciskiem w panelu albo z telefonu. Odblokowanie: wpisz kod na klawiaturze albo odblokuj z telefonu.</p>
+        <label class="field"><span>Kod odblokowania (4–8 cyfr)</span><input type="text" inputmode="numeric" id="sLockPin" maxlength="8" autocomplete="off"></label>
+        <label class="chk"><input type="checkbox" id="sLockAuto"> <span>Włączaj automatycznie po starcie pokazu</span></label>
+        <p class="hint">Pełnego ekranu nie da się całkiem zablokować — przeglądarka zawsze pozwala z niego wyjść, gdy przytrzyma się <b>Esc</b> przez 2 sekundy.</p>
+      </div>
+    </details>
+
+    <details class="sec">
+      <summary>Ulubione</summary>
+      <div class="sec-body">
+        <p class="hint" id="favCount"></p>
+        <div class="row">
+          <button class="btn small" id="favPlay">★ Odtwórz ulubione</button>
+          <button class="btn small ghost" id="favFilter">Pokaż w organizerze</button>
+        </div>
+        <button class="linkbtn" id="favClear" style="justify-self:start">Wyczyść wszystkie ulubione</button>
+      </div>
+    </details>
+
+    <details class="sec">
+      <summary>Goście (kod QR): piosenki, zdjęcia, galeria</summary>
+      <div class="sec-body">
+        <p class="hint">Goście skanują osobny kod QR, wyszukują piosenkę i wysyłają prośbę. Każda prośba czeka na Twoją decyzję (na laptopie albo w pilocie): <b>Następna</b> — zagra zaraz po obecnym utworze, <b>Na koniec</b> — po pozostałych prośbach, <b>🎬</b> — jako teledysk na ekranie, <b>✕</b> — odrzuć. Kolejność możesz zmieniać strzałkami. Gdy kolejka się skończy, muzyka wraca do playlisty tam, gdzie przerwała.</p>
+        <label class="chk"><input type="checkbox" id="sGuestOn"> <span>🎵 Przyjmuj prośby o piosenki</span></label>
+        <label class="chk app-only-f"><input type="checkbox" id="sGuestUpload"> <span>📷 Goście mogą wysyłać zdjęcia i filmy (trafiają do folderu projektu)</span></label>
+        <label class="chk app-only-f" style="margin-left:26px"><input type="checkbox" id="sGuestUploadAuto"> <span>od razu do pokazu, bez akceptacji</span></label>
+        <label class="chk app-only-f"><input type="checkbox" id="sGuestGallery"> <span>🖼 Galeria dla gości — przeglądanie i pobieranie zdjęć na telefonie</span></label>
+        <label class="field app-only-f" style="margin-left:26px"><span>Co widać w galerii</span><select id="sGalleryScope"><option value="show">wszystkie zdjęcia i filmy z pokazu</option><option value="fav">tylko ulubione</option></select></label>
+        <p class="hint app-only-note">Wysyłanie zdjęć i galeria działają w aplikacji Pokazy (nie w wersji w przeglądarce).</p>
+        <label class="chk"><input type="checkbox" id="sReqNote"> <span>Pokazuj powiadomienie o nowej prośbie na ekranie pokazu (prawy dolny róg)</span></label>
+        <label class="chk"><input type="checkbox" id="sGuestAuto"> <span>Akceptuj automatycznie (na koniec kolejki)</span></label>
+        <button class="btn small" id="guestQrBtn" style="justify-self:start">Kod QR dla gości</button>
+        <p class="hint">Działa dla muzyki z playlisty YouTube i tylko wtedy, gdy goście są w tej samej sieci Wi-Fi co laptop.</p>
+      </div>
+    </details>
+
+    <details class="sec">
+      <summary>Pilot w telefonie</summary>
+      <div class="sec-body">
+        <p class="hint">Telefon w tej samej sieci Wi-Fi (albo laptop podłączony do hotspotu telefonu) steruje pokazem: następne i poprzednie, pauza, przewijanie i głośność filmów, muzyka, ulubione. Na telefonie widać też nazwę pliku.</p>
+        <button class="btn small" id="remoteBtn" style="justify-self:start">Połącz telefon</button>
+        <p class="hint" id="remoteStatus"></p>
+      </div>
+    </details>
+
+    <details class="sec">
+      <summary>Kopia ustawień</summary>
+      <div class="sec-body">
+        <p class="hint">Ręczne zmiany kolejności, obroty, ulubione, głośność filmów i ukryte pliki są zapamiętywane w tej przeglądarce. Zapisz kopię, żeby przenieść je na inny komputer.</p>
+        <div class="row">
+          <button class="btn small" id="exportBtn">Zapisz kopię</button>
+          <button class="btn small ghost" id="importBtn">Wczytaj kopię</button>
+        </div>
+        <button class="linkbtn" id="resetManual" style="justify-self:start">Cofnij wszystkie ręczne zmiany</button>
+      </div>
+    </details>
+  </aside>
+
+  <main id="main">
+    <section id="empty">
+      <div class="hero">
+        <h1>Wesele, minuta po minucie</h1>
+        <div class="rule"></div>
+        <p>Wskaż folder ze zdjęciami i filmami. Narzędzie ułoży je według prawdziwej godziny zrobienia, nawet gdy pochodzą z wielu telefonów. Pliki zostają na tym komputerze.</p>
+        <button class="btn primary" id="heroPick">Wybierz folder</button>
+        <p class="drop-hint">albo przeciągnij tutaj foldery z telefonu, Dysku Google i WhatsAppa</p>
+        <div class="reopen" id="reopen"></div>
+        <p class="warn" id="fileWarn" hidden style="margin-top:22px;text-align:left">Strona jest otwarta bezpośrednio z pliku. Pokaz zadziała, ale YouTube i zapamiętywanie folderów wymagają uruchomienia przez <b>uruchom.bat</b>.</p>
+      </div>
+    </section>
+    <div id="toolbar" hidden>
+      <div class="chips" id="chips"></div>
+      <div class="grow"></div>
+      <button class="btn small ghost" id="undoBtn" hidden>↶ Cofnij</button>
+      <button class="btn small ghost" id="redoBtn" hidden>↷ Ponów</button>
+      <button class="btn small" id="reviewBtn" title="Przeglądaj pliki z tego widoku na całym ekranie: strzałki, U ulubione, H ukryj, R obróć">▶ Szybki przegląd</button>
+      <div class="progress" id="progress" hidden><span id="progTxt"></span><span class="bar"><i id="progBar"></i></span></div>
+      <input type="text" id="search" placeholder="Szukaj nazwy pliku" aria-label="Szukaj nazwy pliku">
+      <input type="range" id="tileSize" min="100" max="260" value="150" aria-label="Wielkość miniatur" style="width:90px">
+    </div>
+    <div id="notice" hidden></div>
+    <div id="timeline"></div>
+  </main>
+
+  <aside id="drawer" aria-label="Szczegóły pliku"></aside>
+</div>
+
+<div id="show" hidden>
+  <div class="layer" id="layerA"></div>
+  <div class="layer" id="layerB"></div>
+  <div class="caption" id="caption"></div>
+  <div class="flash" id="flash"></div>
+  <button class="zoomchip" id="zoomChip" hidden></button>
+  <div class="infobox" id="infoBox" hidden></div>
+  <div class="lockchip" id="lockChip" hidden></div>
+  <div class="remainchip" id="remainChip" hidden></div>
+  <div class="reqnote" id="reqNote" hidden><span>🎵 Prośba o piosenkę</span><b></b><small></small></div>
+  <div class="qrboard" id="qrBoard" hidden><div class="qrb-in"><div class="qrb-code"></div><div class="qrb-t"><b>Zaproponuj piosenkę 🎵</b><span>Zeskanuj kod aparatem telefonu, wyszukaj utwór i wyślij prośbę.</span><small class="qrb-url"></small></div></div></div>
+  <div class="mvwrap" id="mvWrap" hidden><iframe id="mvFrame" title="Teledysk" allow="autoplay; encrypted-media; fullscreen" src="about:blank"></iframe><div class="mvshield" id="mvShield"></div><div class="mvmsg" id="mvMsg" hidden></div></div>
+  <div class="mvask" id="mvAsk" hidden>
+    <div class="row" style="align-items:center"><b style="flex:1">Teledysk na ekran</b><button class="btn small ghost" id="mvAskNo">Zamknij</button></div>
+    <div id="hPicker"></div>
+    <small>Pokaz i muzyka w tle wstrzymają się na czas teledysku. Spacja — pauza, Esc — koniec.</small>
+  </div>
+  <div class="mvask" id="annAsk" hidden>
+    <b>Ogłoszenie na ekranie</b>
+    <div class="chips" id="annPresets"></div>
+    <input type="text" id="annAskIn" maxlength="240" placeholder="Wpisz własny napis, np. Zapraszamy na tort!" aria-label="Treść ogłoszenia">
+    <div class="row"><select id="annAskDur" aria-label="Jak długo"><option value="15">15 s</option><option value="30" selected>30 s</option><option value="60">1 min</option><option value="180">3 min</option><option value="0">do odwołania</option></select><button class="btn small primary" id="annAskGo">Pokaż</button><button class="btn small" id="annAskHide" hidden>Ukryj obecne</button><button class="btn small ghost" id="annAskNo">Zamknij</button></div>
+    <small>Skróty: <b>Q</b> — przerwa, <b>W</b> — przerwa na papierosa (ponowne naciśnięcie ukrywa). Napisy zaczynające się od „Przerwa” są na środku.</small>
+  </div>
+  <div class="nowplay" id="nowPlay" hidden></div>
+  <div class="announce" id="announce" hidden><div class="annbg" id="annBg"></div><div class="ann-in"><span class="ann-k">Ogłoszenie</span><div class="ann-rule"></div><p id="annText"></p></div></div>
+  <div class="hud top">
+    <button class="btn small" id="exitShow">Zamknij pokaz</button>
+    <span class="pos" id="pos"></span>
+  </div>
+  <div class="hud bottom">
+    <div class="mvbar" id="mvBar" hidden>
+      <b id="mvbTitle"></b>
+      <div class="vbar"><span id="mvbT">0:00</span><div class="vtrack" id="mvbTrack" title="Kliknij, aby przewinąć teledysk"><div class="vfill" id="mvbFill"></div></div><span id="mvbD">0:00</span></div>
+      <div class="row"><button class="ibtn txt" id="mvbBack">−10 s</button><button class="ibtn txt" id="mvbPlay">⏸ Pauza</button><button class="ibtn txt" id="mvbFwd">+10 s</button><button class="ibtn txt on" id="mvbStop">⏹ Zakończ teledysk</button></div>
+    </div>
+    <div class="vbar" id="vbar" hidden><span id="vCur">0:00</span><div class="vtrack" id="vTrack" title="Kliknij, aby przewinąć"><div class="vfill" id="vFill"></div></div><span id="vDur">0:00</span></div>
+    <div class="remainhud" id="remainHud"></div>
+    <div class="ribbon" id="ribbon"></div>
+    <div class="ctrls">
+      <button class="ibtn" id="cPrev" title="Poprzedni slajd (↑)" aria-label="Poprzedni slajd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="ibtn" id="cPlay" title="Pauza (spacja)" aria-label="Pauza"></button>
+      <button class="ibtn txt" id="cBack" hidden></button>
+      <button class="ibtn txt" id="cFwd" hidden></button>
+      <button class="ibtn" id="cNext" title="Następny slajd (↓)" aria-label="Następny slajd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg></button>
+      <button class="ibtn" id="cMusic" title="Muzyka (M)" aria-label="Muzyka"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg></button>
+      <button class="ibtn" id="cSkipSong" title="Następny utwór (N)" aria-label="Następny utwór"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 6l8 6-8 6zM17 6v12"/></svg></button>
+      <span class="volwrap" id="cVolWrap" hidden title="Głośność tego filmu (+ / −)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg><input type="range" id="cVol" min="0" max="200" step="5" aria-label="Głośność tego filmu"><b id="cVolPct"></b></span>
+      <span class="np" id="np"></span>
+      <span class="grow"></span>
+      <button class="ibtn" id="cFav" title="Ulubione (U)" aria-label="Ulubione"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg></button>
+      <button class="ibtn txt" id="cAnnBtn" title="Ogłoszenie na ekranie (Q — przerwa, W — przerwa na papierosa)">📢 Ogłoszenie</button>
+      <button class="ibtn txt" id="cMV" title="Teledysk z YouTube na cały ekran">🎬 Teledysk</button>
+      <button class="ibtn txt" id="cFavMode2" title="Pokaz ulubionych / cały pokaz"></button>
+      <button class="ibtn" id="cInfo" title="Nazwa pliku (I)" aria-label="Nazwa pliku"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></button>
+      <button class="ibtn" id="cTV" title="Pokaz na telewizorze, sterowanie na laptopie (T)" aria-label="Na telewizor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="12" rx="1.5"/><path d="M8 20h8"/></svg></button>
+      <button class="ibtn" id="cRot" title="Obróć (R)" aria-label="Obróć"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg></button>
+      <button class="ibtn" id="cHide" title="Usuń z pokazu (H)" aria-label="Usuń z pokazu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3l18 18M10.6 5.1A9.8 9.8 0 0 1 12 5c5 0 9 4.5 10 7-.4 1-1.3 2.4-2.6 3.7M6.3 6.3C4.2 7.7 2.6 9.8 2 12c1 2.5 5 7 10 7 1.9 0 3.6-.6 5.1-1.5M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button>
+      <button class="ibtn" id="cFull" title="Pełny ekran (F)" aria-label="Pełny ekran"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div id="console" hidden>
+  <header class="cbar">
+    <div class="ctitle"><b>Pokaz na telewizorze</b><span id="cPos"></span><span id="cStatus"></span><span id="cRemain" class="cremain"></span></div>
+    <span class="grow"></span>
+    <button class="btn small" id="cBrowse" title="Wszystkie slajdy pokazu: podgląd, pokazanie poza kolejnością">📋 Przegląd pokazu</button>
+    <button class="btn small" id="cLock" title="Zablokuj laptopa przed gośćmi (B)">🔒 Zablokuj</button>
+    <button class="btn small" id="cFavMode"></button>
+    <button class="btn small" id="cRemoteBtn">Pilot w telefonie</button>
+    <button class="btn small" id="cHere">Pokaż na tym ekranie</button>
+    <button class="btn small primary" id="cEnd">Zakończ pokaz</button>
+  </header>
+  <div class="cmain">
+    <section class="cleft">
+      <div class="pvstage" id="pvStage"><div id="pvInner"></div><span class="pvlab">Na telewizorze</span><button class="zoomchip" id="pvZoom" hidden></button><div class="flash" id="cFlash"></div></div>
+      <div class="vbar" id="cvbar" hidden><span id="cvCur">0:00</span><div class="vtrack" id="cvTrack" title="Kliknij, aby przewinąć"><div class="vfill" id="cvFill"></div></div><span id="cvDur">0:00</span></div>
+      <div class="ctrls kctrls">
+        <button class="ibtn" id="kPrev" title="Poprzedni slajd (↑)" aria-label="Poprzedni slajd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <button class="ibtn big" id="kPlay" aria-label="Pauza / odtwarzaj"></button>
+        <button class="ibtn txt" id="kBack" hidden title="Cofnij film (←)"></button>
+        <button class="ibtn txt" id="kFwd" hidden title="Film do przodu (→)"></button>
+        <button class="ibtn" id="kNext" title="Następny slajd (↓)" aria-label="Następny slajd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5l7 7-7 7"/></svg></button>
+        <span class="grow"></span>
+        <button class="ibtn" id="kMusic" title="Muzyka (M)" aria-label="Muzyka"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg></button>
+        <button class="ibtn" id="kSongPrev" title="Poprzedni utwór" aria-label="Poprzedni utwór"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 6l-8 6 8 6zM7 6v12"/></svg></button>
+        <button class="ibtn" id="kSong" title="Następny utwór (N)" aria-label="Następny utwór"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 6l8 6-8 6zM17 6v12"/></svg></button>
+        <span class="np" id="kNp"></span>
+      </div>
+    </section>
+    <div class="splitv" id="splitC" title="Przeciągnij, aby zmienić szerokość panelu (dwuklik — domyślna)"></div>
+    <aside class="cright">
+      <span class="lbl">Teraz na ekranie</span>
+      <div id="cNowName" class="cnow"></div>
+      <div id="cNowMeta"></div>
+      <p class="hint" id="cReturn" hidden style="color:var(--gold2)"></p>
+      <div class="row">
+        <button class="btn small" id="kFav">☆ Do ulubionych</button>
+        <button class="btn small ghost" id="kRot">Obróć</button>
+        <button class="btn small ghost" id="kHide">Usuń z pokazu</button>
+        <button class="btn small ghost" id="kOpen" title="Otwórz ten plik w nowej karcie na laptopie (O)">Otwórz osobno ↗</button>
+        <button class="btn small ghost" id="kSkip" title="Gdy pokaz dojdzie do tego miejsca w kolejności, ten slajd zostanie pominięty">⊘ Nie pokazuj ponownie</button>
+      </div>
+      <label class="field" id="cVolField" hidden><span>Głośność tego filmu: <b id="cVolVal"></b></span><input type="range" id="cVol2" min="0" max="200" step="5"></label>
+      <div class="calerts" id="cAlerts"></div>
+      <div class="cann" id="cGPWrap" hidden>
+        <div class="row" style="align-items:center"><span class="lbl" id="cGPHead" style="flex:1">📷 Zdjęcia od gości</span><button class="btn small" id="cGPAll">✓ Akceptuj wszystkie</button></div>
+        <div class="gpend" id="cGP"></div>
+      </div>
+      <div class="cann" id="cGReqWrap" hidden>
+        <div class="row" style="align-items:center"><span class="lbl" id="cGReqHead" style="flex:1">Prośby gości</span><button class="btn small ghost" id="cGuestQR" title="Pokaż / ukryj kod QR dla gości na ekranie (G)">Kod na ekranie (G)</button></div>
+        <div class="gqlist" id="cGReq"></div>
+        <span class="lbl" id="cQueueHead" hidden>Kolejka muzyki (potem wraca playlista)</span>
+        <div class="gqlist" id="cQueue"></div>
+      </div>
+      <button class="btn small ghost" id="cCredits" style="justify-self:start" hidden>🎬 Napisy końcowe teraz</button>
+      <div class="cann">
+        <span class="lbl">Ogłoszenie na telewizorze</span>
+        <div class="chips" id="cAnnPresets"></div>
+        <textarea id="cAnnText" rows="2" maxlength="240" placeholder="np. Zapraszamy na tort!"></textarea>
+        <div class="row">
+          <select id="cAnnDur"><option value="15">15 s</option><option value="30" selected>30 s</option><option value="60">1 min</option><option value="180">3 min</option><option value="0">do odwołania</option></select>
+          <button class="btn small primary" id="cAnnShow">Pokaż</button>
+        </div>
+        <label class="chk"><input type="checkbox" id="cAnnBreak"> <span>Na środku ekranu, pokaz wstrzymany (muzyka gra dalej) — przy „Przerwa…” włącza się samo</span></label>
+        <div class="annstate" id="cAnnState" hidden><span></span><button class="btn small ghost" id="cAnnHide">Ukryj</button></div>
+      </div>
+      <div class="cann">
+        <span class="lbl">Muzyka w tle</span>
+        <div class="kmnow"><b id="kmTitle">—</b><small id="kmInfo"></small></div>
+        <div class="row"><button class="btn small" id="kmPrev" title="Poprzedni utwór (A)">⏮</button><button class="btn small" id="kmToggle" title="Muzyka (M)">⏯</button><button class="btn small" id="kmNext" title="Następny utwór (D)">⏭</button><span class="grow"></span><button class="btn small ghost" id="kmDn">−</button><b id="kmVol" style="min-width:40px;text-align:center"></b><button class="btn small ghost" id="kmUp">+</button></div>
+        <div id="kMusicPicker"></div>
+      </div>
+      <div class="cann">
+        <span class="lbl">Teledysk z YouTube na telewizorze</span>
+        <div id="kPicker"></div>
+        <div class="mvstate" id="kMVState" hidden>
+          <span id="kMVTitle"></span>
+          <div class="vbar" id="kMVBar"><span id="kMVT">0:00</span><div class="vtrack" id="kMVTrack" title="Kliknij, aby przewinąć"><div class="vfill" id="kMVFill"></div></div><span id="kMVD">0:00</span></div>
+          <div class="row"><button class="btn small" id="kMVBack">−10 s</button><button class="btn small" id="kMVToggle">⏯ Pauza</button><button class="btn small" id="kMVFwd">+10 s</button><button class="btn small" id="kMVDn">−</button><b id="kMVVol"></b><button class="btn small" id="kMVUp">+</button><button class="btn small primary" id="kMVStop">⏹ Zakończ</button></div>
+        </div>
+        <div class="chips" id="kMVRecent"></div>
+      </div>
+      <p class="hint ckeys"><b>← →</b> przewijanie filmu / zmiana zdjęcia · <b>↑ ↓</b> slajd · <b>spacja</b> pauza · <b>Q</b> przerwa · <b>W</b> przerwa na papierosa · <b>Y</b> teledysk · <b>B</b> blokada · <b>L</b> legenda skrótów · <b>U</b> ulubione · <b>O</b> otwórz plik osobno · <b>+ −</b> głośność filmu · <b>M</b> muzyka · kółko myszy na podglądzie przybliża zdjęcie na telewizorze, <b>0</b> cofa</p>
+    </aside>
+  </div>
+  <div class="splith" id="splitB" title="Przeciągnij, aby zmienić wysokość dolnej części (dwuklik — domyślna)"></div>
+  <div class="cbottom">
+    <div class="ribbon" id="cRibbon"></div>
+    <div class="cnext"><span class="lbl">Następne</span><div class="cstrip" id="cStrip"></div></div>
+  </div>
+</div>
+
+<div id="review" class="review" hidden>
+  <div class="rv-top">
+    <div class="rv-info"><b id="rvName"></b><span id="rvMeta"></span></div>
+    <span id="rvPos"></span>
+    <button class="btn small ghost" id="rvClose">Zamknij (Esc)</button>
+  </div>
+  <div class="rv-stage" id="rvStage"></div>
+  <button class="rv-nav prev" id="rvPrev" aria-label="Poprzedni">‹</button>
+  <button class="rv-nav next" id="rvNext" aria-label="Następny">›</button>
+  <div class="rv-bottom">
+    <span id="rvBadges"></span><span class="grow"></span>
+    <button class="btn small" id="rvFav">★ Ulubione (U)</button>
+    <button class="btn small" id="rvHide">Ukryj / przywróć (H)</button>
+    <button class="btn small" id="rvRot">Obróć (R)</button>
+  </div>
+  <div class="rv-keys">← → przeglądaj · kółko myszy · U ulubione · H ukryj/przywróć · R obróć (Shift+R w lewo) · spacja film · O nowa karta · F pełny ekran · Ctrl+Z cofnij</div>
+</div>
+
+<div id="lockOverlay" class="lockov" hidden><div class="lockbox"><div class="lk">🔒</div><h3>Pokaz jest zablokowany</h3><p>Wpisz kod, aby odblokować panel — albo odblokuj z telefonu.</p><input type="password" inputmode="numeric" id="lockPinIn" autocomplete="off" aria-label="Kod odblokowania"><p class="hint" id="lockMsg"></p></div></div>
+
+<div class="creqnote" id="cReqNote" hidden><span>🎵 Nowa prośba o piosenkę</span><b></b><small></small></div>
+
+<div class="updbar" id="updBar" hidden><span></span><button class="btn small primary"></button><button class="btn small ghost" onclick="this.parentNode.hidden=true">Później</button></div>
+
+<div id="modal" class="modal" hidden><div class="mbox" id="modalBox" role="dialog" aria-modal="true"></div></div>
+
+<div id="yt-holder" hidden class="bar">
+  <div class="ytvid" id="ytVid"><div id="yt"></div></div>
+  <div class="ytbar"><div class="ytt"><b id="ytbTitle">Muzyka z YouTube</b><small id="ytbInfo"></small></div>
+    <button id="ytbPrev" title="Poprzedni utwór (A)">⏮</button><button id="ytbPlay" title="Muzyka włącz / wyłącz (M)">⏯</button><button id="ytbNext" title="Następny utwór (D)">⏭</button><button id="ytbSize" title="Większy / mniejszy odtwarzacz">⤢</button></div>
+</div>
+
+<input type="file" id="dirInput" webkitdirectory multiple hidden>
+<input type="file" id="fileInput" multiple accept="image/*,video/*,.heic,.heif,.mov" hidden>
+<input type="file" id="musicInput" multiple accept="audio/*,.mp3,.m4a,.flac,.wav,.ogg" hidden>
+<input type="file" id="importInput" accept=".json,application/json" hidden>
+
+<script>/*__QR__*/</script>
+<script>
+/*__SCRIPT__*/
+</script>
+</body>
+</html>
