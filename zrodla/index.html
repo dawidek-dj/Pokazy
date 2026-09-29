@@ -289,6 +289,10 @@ body.console-on.ytvis .cbottom{padding-bottom:78px}
 .pt-in{position:relative;z-index:1;display:grid;gap:6px;text-align:center}.pt-in b{font:italic 500 32px var(--serif);color:var(--gold2)}.pt-in span{color:var(--muted)}
 .rehearsal{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .rehearsal video{width:320px;height:180px;background:#000;border-radius:8px}
+/* tryb oszczędny (pauza, przerwa) */
+#show.eco *,#show.eco *::before,#show.eco *::after{animation-play-state:paused!important}
+#show.eco .abg{animation:none!important}
+.ecochip{font-size:12px;color:var(--sage);white-space:nowrap}
 /* notatki, komentarze, statystyki, eksport */
 .dx{display:grid;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
 .dx textarea,#sTripExtra{font:inherit;font-size:14px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);resize:vertical}
@@ -826,6 +830,7 @@ body.showing #yt-holder{z-index:99}
         <div class="row" style="flex-wrap:wrap"><button class="btn small" id="packBtn">💾 Zabierz projekt na pendrive / dysk</button><button class="btn small ghost" id="unpackBtn">📂 Otwórz projekt z pendrive'a</button></div>
         <p class="hint">„Zabierz projekt” kopiuje zdjęcia, filmy, przygotowane wersje, ustawienia i komentarze głosowe — na innym laptopie pokaz jest od razu płynny.</p>
         <label class="field"><span>Aktualizacje</span><select id="sUpdCh"><option value="stable">tylko stabilne (zalecane przed ważnym wydarzeniem)</option><option value="test">także testowe — nowości wcześniej</option></select></label>
+        <label class="chk"><input type="checkbox" id="sEco"> <span>🍃 Oszczędzanie w pauzie i przerwie — animacje i praca w tle zwalniają (laptop mniej się grzeje i szumi)</span></label>
         <button class="btn small" id="sShortcut" style="justify-self:start">🖥 Skrót do tego projektu na pulpicie</button>
         <span class="lbl">Automatyczna kopia ustawień projektu</span>
         <p class="hint">Poprawki godzin, obroty, ulubione, notatki, części — zapisywane co jakiś czas do wybranego folderu (np. OneDrive albo pendrive). Przywracasz przez „Kopia ustawień → Wczytaj kopię”.</p>
@@ -971,7 +976,7 @@ body.showing #yt-holder{z-index:99}
 
 <div id="console" hidden>
   <header class="cbar">
-    <div class="ctitle"><b>Pokaz na telewizorze</b><span id="cPos"></span><span id="cStatus"></span><span id="cRemain" class="cremain"></span></div>
+    <div class="ctitle"><b>Pokaz na telewizorze</b><span id="cPos"></span><span id="cStatus"></span><span id="cRemain" class="cremain"></span><span id="cEco" class="ecochip" hidden>🍃 tryb oszczędny</span></div>
     <span class="grow"></span>
     <button class="btn small" id="cBrowse" title="Wszystkie slajdy pokazu: podgląd, pokazanie poza kolejnością">📋 Przegląd pokazu</button>
     <button class="btn small" id="cLock" title="Zablokuj laptopa przed gośćmi (B)">🔒 Zablokuj</button>

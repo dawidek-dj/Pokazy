@@ -287,20 +287,3 @@ async function cachedParse(file, fn) {
 parseImage = f => cachedParse(f, parseImageF);
 parseVideo = f => cachedParse(f, parseVideoF);
 
-// start
-Hist.last = JSON.stringify(O);
-bindSettings();
-bindExtraSettings();
-renderSidebar();
-renderTimeline();
-renderHeader();
-renderReopen();
-updUndoUI();
-updMVUI();
-updGReqUI();
-updProjUI();
-updGPUI();
-for (const P of Picker.inst) Picker.render(P);
-if (location.protocol === 'file:') $('#fileWarn').hidden = false;
-Remote.init();
-if (!NATIVE) offerRecovery();

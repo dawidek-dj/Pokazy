@@ -638,7 +638,9 @@ function updConn() {
   if (msg) $('#st').textContent = bad ? 'brak połączenia' : 'łączę…';
 }
 if (key) fetchT(`/api/r/cmd?k=${encodeURIComponent(key)}&c=hello&id=h${Date.now()}`, { method: 'POST' }).catch(() => { });
-poll(); setInterval(poll, 800); setInterval(updConn, 1000);
+let lastPoll = 0;
+const pollTick = () => { const eco = last && last.state && last.state.eco; if (eco && Date.now() - lastPoll < 2400) return; lastPoll = Date.now(); poll(); };
+poll(); setInterval(pollTick, 800); setInterval(updConn, 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 </script>
 </body>

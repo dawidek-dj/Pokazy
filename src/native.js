@@ -190,6 +190,7 @@ function createNative({ cacheDir, ffmpegPath, log = () => { } }) {
           '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-progress', 'pipe:1', '-nostats', tmp];
         const r = await new Promise(res => {
           const pr2 = spawn(ffmpegPath, args, { windowsHide: true }); let err = '';
+          try { os.setPriority(pr2.pid, os.constants.priority.PRIORITY_BELOW_NORMAL); } catch { }
           pr2.stdout.on('data', d => { const m = String(d).match(/out_time_ms=(\d+)/g); if (m && dur) job.pct = Math.min(99, Math.round(+m[m.length - 1].split('=')[1] / 1e6 / dur * 100)); });
           pr2.stderr.on('data', d => { err += d; if (err.length > 50000) err = err.slice(-20000); });
           pr2.on('close', code => res({ code, err })); pr2.on('error', e2 => res({ code: -1, err: String(e2) }));

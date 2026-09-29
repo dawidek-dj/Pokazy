@@ -388,10 +388,10 @@ SH.addEventListener('click', e => { if (!e.target.closest('.hud')) { unmuteForce
    ========================================================= */
 /* Rytm z osobnego wątku (Web Worker): przeglądarka mocno spowalnia zwykłe timery,
    gdy okno laptopa jest zasłonięte albo zminimalizowane — worker tego nie ma. */
-const Heart = { fns: [] };
+const Heart = { fns: [], slow: false, n: 0 };
 function heartbeat(fn) { Heart.fns.push(fn); }
 (() => {
-  const run = () => { for (const f of Heart.fns) { try { f(); } catch { } } };
+  const run = () => { if (Heart.slow && (++Heart.n % 4)) return; for (const f of Heart.fns) { try { f(); } catch { } } };
   try {
     const w = new Worker(URL.createObjectURL(new Blob(['setInterval(function(){postMessage(0)},300)'], { type: 'text/javascript' })));
     w.onmessage = run; w.onerror = () => setInterval(run, 300);
@@ -451,6 +451,7 @@ const Remote = {
       msrc: S.musicSource, yt: Music.ytInfo(), queue: Music.queue.map(q => q.title + (q.from ? ` — prośba: ${q.from}` : '')), inQueue: !!YTP.inQueue,
       credits: slides.some(x => x.type === 'credits'), lockPinSet: !!S.lockPin, alerts: alertList(),
       note: Show.on && slides[Show.idx] && slides[Show.idx].items ? (O[slides[Show.idx].items[0].key] || {}).note || '' : '',
+      eco: !!(window.Eco && Eco.on),
       remain: (() => { const r = remainInfo(); return r ? { txt: remainText(r), nom: Math.round(r.nominal / 1000), pace: r.pace ? Math.round(r.pace / 1000) : null, endAt: fmtHM(r.endAt), endAtPace: r.endAtPace ? fmtHM(r.endAtPace) : '', loops: r.loops, atEnd: r.atEnd, left: r.left, photos: r.photos, videos: r.videos } : null; })(),
       returnTo: Show.returnTo != null ? Show.returnTo + 1 : null, curSkip: Show.on ? isSkipped(slides[Show.idx]) : false,
       mv: mvState(), mvRecent: MV.recent.slice(0, 5).map(r => ({ id: r.id, title: r.title })),
