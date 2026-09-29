@@ -164,7 +164,7 @@ async function addFiles(files, sourceName) {
   // wczytaj zapamiętane wyniki analizy
   await Promise.all(added.map(async it => {
     const m = await idb.get('meta', it.key);
-    if (m && m.hash) { it.hash = m.hash; it.dims = { w: m.w, h: m.h }; if (m.dur) it.dur = it.dur || m.dur; if (m.disp) it.disp = true; it.analyzed = true; }
+    if (m && m.hash) { it.hash = m.hash; it.dims = { w: m.w, h: m.h }; if (m.dur) it.dur = it.dur || m.dur; if (m.disp) it.disp = true; if (m.nv) it.nv = m.nv; if (m.prep) it.prep = m.prep; it.analyzed = true; }
   }));
   showWorking(null);
   if (!window.exifr) toast('Nie udało się pobrać czytnika dat EXIF — sprawdź internet. Kolejność będzie mniej dokładna.');

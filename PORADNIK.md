@@ -89,6 +89,22 @@ Kliknij **Zezwalaj** (sieci prywatne) — to potrzebne dla pilota w telefonie i 
 
 ---
 
+## Część 5 — wersje testowe (bezpiecznie przed ważnym wydarzeniem)
+
+1. W programie: **Program → Aktualizacje → także testowe** — tylko na komputerze, na którym chcesz sprawdzać nowości.
+2. Na GitHubie przy **Run workflow** wybierz **Kanał: testowa**. Taka wersja trafi wyłącznie do programów z włączonymi aktualizacjami testowymi.
+3. Gdy wszystko działa, zrób ją stabilną: **Releases** → przy tej wersji ✎ (**Edit**) → odznacz **Set as a pre-release**, zaznacz **Set as the latest release** → **Update release**.
+   Od tej chwili dostaną ją wszystkie programy (także przenośne).
+
+## Część 6 — gdy coś źle się skopiowało
+
+Najprostszy sposób, żeby repozytorium było dokładnie takie jak w paczce:
+1. W GitHub Desktop: **Repository → Show in Explorer**.
+2. Usuń w tym folderze **wszystko oprócz ukrytego folderu `.git`** (tego nie ruszaj — Widok → Pokaż → Ukryte elementy, żeby go widzieć).
+3. Otwórz paczkę, wejdź **do środka** folderu `pokazy-aplikacja`, zaznacz wszystko (Ctrl+A, razem z `.github`) i skopiuj do folderu repozytorium.
+4. W GitHub Desktop: **Commit to main** → **Push origin**.
+Budowanie na GitHubie samo sprawdza układ plików i przy błędzie wyświetla po polsku, czego brakuje.
+
 ## Przydatne informacje
 
 - **Gdzie są dane?** Wersja zainstalowana: `%APPDATA%\Pokazy`. Wersja przenośna: folder `dane` obok programu.

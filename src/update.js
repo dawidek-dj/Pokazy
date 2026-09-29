@@ -4,7 +4,9 @@
 const { app } = require('electron');
 const https = require('https'), fs = require('fs'), path = require('path'), os = require('os');
 const { spawn } = require('child_process');
-let ctx = null, pending = null;
+let ctx = null, pending = null, au = null;
+const chFile = () => path.join(app.getPath('userData'), 'aktualizacje.json');
+function channel() { try { return JSON.parse(fs.readFileSync(chFile(), 'utf8')).channel === 'test' ? 'test' : 'stable'; } catch { return 'stable'; } }
 
 const cmpVer = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 function repo() { try { return require('../package.json').pokazRepo || ''; } catch { return ''; } }
@@ -32,7 +34,8 @@ function download(u, dest, onPct) {
 async function checkPortable() {
   const rp = repo(); if (!rp) return;
   try {
-    const rel = await getJSON(`https://api.github.com/repos/${rp}/releases/latest`);
+    // kanał testowy: najnowsze wydanie, także „testowe” (pre-release); stabilny: tylko wydania stabilne
+    const rel = channel() === 'test' ? (await getJSON(`https://api.github.com/repos/${rp}/releases?per_page=10`)).find(r => !r.draft) || {} : await getJSON(`https://api.github.com/repos/${rp}/releases/latest`);
     const ver = String(rel.tag_name || '').replace(/^v/, '');
     if (!ver || cmpVer(ver, app.getVersion()) <= 0) return;
     const asset = (rel.assets || []).find(a => /Portable.*\.zip$/i.test(a.name));
@@ -69,9 +72,8 @@ async function installPortable() {
 }
 
 function initInstalled() {
-  let au;
   try { au = require('electron-updater').autoUpdater; } catch (e) { ctx.log('brak electron-updater', e.message); return; }
-  au.autoDownload = true; au.autoInstallOnAppQuit = true;
+  au.autoDownload = true; au.autoInstallOnAppQuit = true; au.allowPrerelease = channel() === 'test'; au.allowDowngrade = false;
   au.on('update-available', i => ctx.send({ state: 'downloading', version: i.version, pct: 0 }));
   au.on('download-progress', p => ctx.send({ state: 'downloading', version: (pending && pending.version) || '', pct: Math.round(p.percent) }));
   au.on('update-downloaded', i => { pending = { version: i.version, au }; ctx.send({ state: 'ready', version: i.version }); });
@@ -86,6 +88,11 @@ module.exports = {
     if (!app.isPackaged) return;
     if (c.portable) { setTimeout(checkPortable, 8000); setInterval(checkPortable, 6 * 3600e3); }
     else initInstalled();
+  },
+  setChannel(ch) {
+    try { fs.writeFileSync(chFile(), JSON.stringify({ channel: ch })); } catch { }
+    if (!app.isPackaged || !ctx) return;
+    if (ctx.portable) checkPortable(); else if (au) { au.allowPrerelease = ch === 'test'; au.checkForUpdates().catch(() => { }); }
   },
   install() {
     if (!pending) return;

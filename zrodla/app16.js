@@ -286,20 +286,3 @@ if (NATIVE) (async () => {
 const addFilesP = addFiles;
 addFiles = async function (...a) { const r = await addFilesP.apply(this, a); for (const [k, f] of Object.entries(GU.from)) { const it = byKey.get(k); if (it) it.from = f; } updGPUI(); return r; };
 
-// start
-Hist.last = JSON.stringify(O);
-bindSettings();
-bindExtraSettings();
-renderSidebar();
-renderTimeline();
-renderHeader();
-renderReopen();
-updUndoUI();
-updMVUI();
-updGReqUI();
-updProjUI();
-updGPUI();
-for (const P of Picker.inst) Picker.render(P);
-if (location.protocol === 'file:') $('#fileWarn').hidden = false;
-Remote.init();
-if (!NATIVE) offerRecovery();

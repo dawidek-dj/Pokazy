@@ -10,6 +10,11 @@ on:
       wersja:
         description: 'Numer nowej wersji, np. 1.0.1 (zawsze wyższy niż poprzedni)'
         required: true
+      kanal:
+        description: 'Kanał: stabilna (dla wszystkich) albo testowa (tylko dla programów z włączonymi aktualizacjami testowymi)'
+        type: choice
+        options: [stabilna, testowa]
+        default: stabilna
 
 permissions:
   contents: write
@@ -20,6 +25,21 @@ jobs:
     steps:
       - name: Pobierz pliki projektu
         uses: actions/checkout@v5
+
+      - name: Sprawdź układ plików
+        shell: bash
+        run: |
+          BRAK=""
+          for f in package.json package-lock.json src/main.js src/server.js zrodla/build.py zrodla/index.html build/icon.ico; do
+            [ -f "$f" ] || BRAK="$BRAK $f"
+          done
+          if [ -n "$BRAK" ]; then
+            echo "::error::Brakuje plików w głównym folderze repozytorium:$BRAK"
+            if [ -d pokazy-aplikacja ]; then echo "::error::Folder 'pokazy-aplikacja' jest wgrany w całości. Trzeba wgrać jego ZAWARTOŚĆ (foldery src, zrodla, build, .github i pliki), a sam folder 'pokazy-aplikacja' usunąć."; fi
+            exit 1
+          fi
+          if [ -d pokazy-aplikacja ]; then echo "::warning::W repozytorium jest też stary folder 'pokazy-aplikacja' — nie jest używany, można go usunąć."; fi
+          echo "Układ plików poprawny."
 
       - name: Przygotuj Node.js
         uses: actions/setup-node@v5
@@ -53,4 +73,4 @@ jobs:
           -c.publish.provider=github
           -c.publish.owner=${{ github.repository_owner }}
           -c.publish.repo=${{ github.event.repository.name }}
-          -c.publish.releaseType=release
+          -c.publish.releaseType=${{ inputs.kanal == 'testowa' && 'prerelease' || 'release' }}

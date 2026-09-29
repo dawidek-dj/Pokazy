@@ -36,7 +36,7 @@ function createNative({ cacheDir, ffmpegPath, log = () => { } }) {
   const decodeHeic = p => new Promise((res, rej) => { const id = ++jid; jobs.set(id, { res, rej }); waiting.push({ id, path: p }); next(); });
 
   /* --- pomocnicze --- */
-  const keyOf = (p, st) => crypto.createHash('sha1').update(`${p}|${st.size}|${Math.round(st.mtimeMs)}`).digest('hex').slice(0, 24);
+  const keyOf = (p, st) => crypto.createHash('sha1').update(`${path.basename(p).toLowerCase()}|${st.size}|${Math.round(st.mtimeMs / 1000)}`).digest('hex').slice(0, 24);
   const cp = (dir, k, ext) => path.join(cacheDir, dir, k + ext);
   const exists = p => fsp.access(p).then(() => true, () => false);
   function run(args, onErr) {
@@ -58,7 +58,7 @@ function createNative({ cacheDir, ffmpegPath, log = () => { } }) {
   }
 
   /* --- zdjęcia --- */
-  async function analyzeImage(p, k) {
+  async function analyzeImage(p, k, want) {
     const ext = path.extname(p).toLowerCase(), heic = ext === '.heic' || ext === '.heif';
     let base, w, h;
     if (heic) {
@@ -71,12 +71,9 @@ function createNative({ cacheDir, ffmpegPath, log = () => { } }) {
     }
     await base.clone().resize(420, 420, { fit: 'inside' }).jpeg({ quality: 80 }).toFile(cp('thumbs', k, '.jpg'));
     const hash = await dHash(base.clone());
-    let disp = false;
-    if (heic || Math.max(w, h) > DISP_MAX) {
-      await base.clone().resize(DISP_MAX, DISP_MAX, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 92 }).toFile(cp('disp', k, '.jpg'));
-      disp = true;
-    }
-    return { kind: 'image', w, h, hash, disp };
+    const needDisp = heic || Math.max(w, h) > 1920;
+    if (needDisp && want && (heic || Math.max(w, h) > want)) await base.clone().resize(want, want, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 92 }).toFile(cp('disp', `${k}_${want}`, '.jpg'));
+    return { kind: 'image', w, h, hash, needDisp, heic };
   }
 
   /* --- filmy --- */
@@ -107,27 +104,50 @@ function createNative({ cacheDir, ffmpegPath, log = () => { } }) {
   /* --- analiza z pamięcią podręczną --- */
   const active = new Map(); let running = 0; const aq = [];
   const aLimit = Math.max(2, cpus);
-  async function analyze(p) {
+  async function dispSizes(k) { const out = []; for (const s of [1920, 3840]) if (await exists(cp('disp', `${k}_${s}`, '.jpg'))) out.push(s); if (await exists(cp('disp', k, '.jpg'))) out.push(3840); return [...new Set(out)]; }
+  async function analyze(p, want) {
     const st = await fsp.stat(p), k = keyOf(p, st), mp = cp('meta', k, '.json');
-    try { const m = JSON.parse(await fsp.readFile(mp, 'utf8')); if (await exists(cp('thumbs', k, '.jpg'))) return { key: k, ...m }; } catch { }
+    try { const m = JSON.parse(await fsp.readFile(mp, 'utf8')); if (await exists(cp('thumbs', k, '.jpg'))) return { key: k, ...m, dispAt: await dispSizes(k) }; } catch { }
     if (active.has(k)) return active.get(k);
     const job = (async () => {
       if (running >= aLimit) await new Promise(r => aq.push(r));
       running++;
       try {
         const ext = path.extname(p).toLowerCase();
-        const m = VID.has(ext) ? await analyzeVideo(p, k) : await analyzeImage(p, k);
+        const m = VID.has(ext) ? await analyzeVideo(p, k) : await analyzeImage(p, k, want || 3840);
         await fsp.writeFile(mp, JSON.stringify(m));
-        return { key: k, ...m };
+        return { key: k, ...m, dispAt: await dispSizes(k) };
       } finally { running--; const n = aq.shift(); if (n) n(); active.delete(k); }
     })();
     active.set(k, job);
     return job;
   }
-  async function cacheFile(p, kind) {
+  async function cacheFile(p, kind, max) {
     const st = await fsp.stat(p), k = keyOf(p, st);
-    const f = kind === 'thumb' ? cp('thumbs', k, '.jpg') : kind === 'disp' ? cp('disp', k, '.jpg') : null;
-    return f && (await exists(f)) ? f : null;
+    if (kind === 'thumb') { const f = cp('thumbs', k, '.jpg'); return (await exists(f)) ? f : null; }
+    if (kind !== 'disp') return null;
+    // najpierw w żądanym rozmiarze, potem dowolna gotowa wersja
+    for (const f of [max && cp('disp', `${k}_${max}`, '.jpg'), cp('disp', `${k}_3840`, '.jpg'), cp('disp', `${k}_1920`, '.jpg'), cp('disp', k, '.jpg')].filter(Boolean)) if (await exists(f)) return f;
+    return null;
+  }
+  // przygotuj wersję zdjęcia w danym rozmiarze (gdy trzeba) — wywoływane w kolejności pokazu
+  async function ensureDisp(p, max) {
+    const st = await fsp.stat(p), k = keyOf(p, st), f = cp('disp', `${k}_${max}`, '.jpg');
+    if (await exists(f)) return true;
+    const ext = path.extname(p).toLowerCase(), heic = ext === '.heic' || ext === '.heif';
+    let base;
+    if (heic) { const d = await decodeHeic(p); base = sharp(d.data, { raw: { width: d.width, height: d.height, channels: 4 } }); }
+    else base = sharp(p, { failOn: 'none', limitInputPixels: false }).rotate();
+    const m = heic ? null : await sharp(p, { failOn: 'none', limitInputPixels: false }).metadata();
+    if (!heic && Math.max(m.width, m.height) <= max) return false;   // oryginał jest wystarczająco mały
+    await base.resize(max, max, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 92 }).toFile(f);
+    return true;
+  }
+  // pliki pamięci podręcznej danego pliku (do przeniesienia projektu)
+  async function cacheFilesOf(p) {
+    const st = await fsp.stat(p), k = keyOf(p, st), out = [];
+    for (const d of ['thumbs', 'disp', 'meta', 'video']) { let ents = []; try { ents = await fsp.readdir(path.join(cacheDir, d)); } catch { } for (const e of ents) if (e.startsWith(k)) out.push(path.join(cacheDir, d, e)); }
+    return out;
   }
 
   /* --- przygotowanie filmów (kodowanie do H.264 w jakości bliskiej oryginałowi) --- */
@@ -150,7 +170,7 @@ function createNative({ cacheDir, ffmpegPath, log = () => { } }) {
     return ['-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-profile:v', 'high'];
   }
   const PQ = { list: [], cur: null, done: new Map(), failed: new Map() };
-  async function preparedPath(p, max) { const st = await fsp.stat(p), k = keyOf(p, st), f = cp('video', `${k}_${max}`, '.mp4'); return (await exists(f)) ? f : null; }
+  async function preparedPath(p, max) { const st = await fsp.stat(p), k = keyOf(p, st); for (const s of [max, 3840, 1920]) { const f = cp('video', `${k}_${s}`, '.mp4'); if (await exists(f)) return f; } return null; }
   function prepEnqueue(p, max = DISP_MAX) {
     if (PQ.list.some(x => x.p === p) || (PQ.cur && PQ.cur.p === p)) return;
     PQ.list.push({ p, max, pct: 0 }); prepNext();
@@ -212,6 +232,6 @@ function createNative({ cacheDir, ffmpegPath, log = () => { } }) {
     return (await exifr.parse(b, { pick, reviveValues: false, translateValues: false, mergeOutput: true, tiff: true, exif: true }).catch(() => null)) || {};
   }
   function shutdown() { for (const w of pool) w.terminate(); }
-  return { analyze, exif, cacheFile, probe, preparedPath, prepEnqueue, prepStatus, encoders, scan, shutdown, IMG, VID, AUD };
+  return { analyze, ensureDisp, cacheFilesOf, cacheDir, exif, cacheFile, probe, preparedPath, prepEnqueue, prepStatus, encoders, scan, shutdown, IMG, VID, AUD };
 }
 module.exports = { createNative };

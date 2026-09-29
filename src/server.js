@@ -42,11 +42,12 @@ function httpGetBuf(u, headers) {
 const safeName = s => String(s || '').normalize('NFKC').replace(/[\\/:*?"<>|\x00-\x1f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
 const UP_EXT = /\.(jpe?g|png|heic|heif|webp|gif|mp4|mov|m4v|webm|3gp|mkv)$/i;
 
-function createServer({ webDir, port = 8765, native = null, log = () => { }, tileDir = null }) {
+function createServer({ webDir, port = 8765, native = null, log = () => { }, tileDir = null, exporter = null, importer = null, drives = () => [], tmpDir = os.tmpdir() }) {
   const token = crypto.randomBytes(18).toString('hex');   // klucz tylko dla okna aplikacji (dostęp do plików)
-  const roots = new Set();                                 // foldery, które użytkownik dodał — tylko z nich wolno czytać
+  const roots = new Set();
+  const PK = { state: 'idle', done: 0, total: 0, root: '', err: '' };   // pakowanie projektu                                 // foldery, które użytkownik dodał — tylko z nich wolno czytać
   const ST = { token: '', gtoken: '', gflags: '', state: Buffer.from('{}'), cmds: [], thumb: Buffer.alloc(0), rev: 0, lastSync: 0, seen: new Map(), ids: [], thumbs: new Map(), glast: new Map(),
-    uploadDir: '', ulog: new Map(), gallery: [], galleryTitle: '' };
+    uploadDir: '', ulog: new Map(), gallery: [], galleryTitle: '', itoken: '', importDir: '', assetDir: '' };
 
   const send = (res, code, type, body, head) => {
     body = body == null ? Buffer.alloc(0) : Buffer.isBuffer(body) ? body : Buffer.from(String(body));
@@ -92,6 +93,80 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
         return json(res, { ok: true, files: await native.scan(dir, q.get('want') || 'media') });
       }
       if (p === '/native/addroot') { const dir = fromB64(q.get('dir')); if (dir) roots.add(dir); return json(res, { ok: true }); }
+      // eksport do MP4: pliki pomocnicze (plansze, nagrania), start, postęp, przerwanie
+      if (p === '/native/exportasset' && req.method === 'POST') {
+        if (!ST.assetDir) { ST.assetDir = path.join(tmpDir, 'pokazy-eksport-' + Date.now()); fs.mkdirSync(ST.assetDir, { recursive: true }); }
+        const name = String(q.get('name') || '').replace(/[^\w.-]/g, '').slice(0, 60) || 'plik';
+        fs.writeFileSync(path.join(ST.assetDir, name), await readBody(req)); return json(res, { ok: true, name });
+      }
+      if (p === '/native/export' && req.method === 'POST') {
+        const job = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+        for (const s of job.segments || []) for (const f of [s.path, ...(s.paths || [])]) if (f && !inRoots(f)) return json(res, { ok: false, err: 'Plik poza folderami projektu' }, 403);
+        for (const f of job.music || []) roots.add(path.dirname(f));
+        job.assetDir = ST.assetDir; ST.assetDir = '';
+        try { await exporter.start(job); return json(res, { ok: true }); } catch (e) { return json(res, { ok: false, err: e.message }, 409); }
+      }
+      if (p === '/native/exportstatus') return json(res, { ok: true, ...exporter.status() });
+      if (p === '/native/exportcancel') { exporter.cancel(); return json(res, { ok: true }); }
+      // import z karty pamięci / pendrive'a
+      if (p === '/native/drives') return json(res, { ok: true, drives: drives() });
+      if (p === '/native/import' && req.method === 'POST') {
+        const d = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+        if (!d.src || !d.dest || !fs.existsSync(d.src)) return json(res, { ok: false, err: 'Nie znaleziono źródła' }, 404);
+        roots.add(d.dest);
+        try { await importer.start(d.src, d.dest, d.known || []); return json(res, { ok: true }); } catch (e) { return json(res, { ok: false, err: e.message }, 409); }
+      }
+      if (p === '/native/importstatus') return json(res, { ok: true, ...importer.status() });
+      // import z telefonu przez Wi-Fi: folder docelowy i osobny kod (zdjęcia właściciela, bez akceptacji)
+      if (p === '/native/importdir') { const dir = fromB64(q.get('dir')); if (dir) { fs.mkdirSync(dir, { recursive: true }); roots.add(dir); ST.importDir = dir; } ST.itoken = q.get('i') || ST.itoken; return json(res, { ok: true }); }
+      // automatyczna kopia ustawień projektu do wybranego folderu (ostatnie 20 kopii)
+      if (p === '/native/backup' && req.method === 'POST') {
+        const dir = fromB64(q.get('dir')), name = String(q.get('name') || 'kopia.json').replace(/[\\/:*?"<>|]/g, '');
+        if (!dir) return json(res, { ok: false }, 400);
+        fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, name), await readBody(req));
+        const pre = name.replace(/\d{8}-\d{4}\.json$/, '');
+        const old = fs.readdirSync(dir).filter(f => f.startsWith(pre) && f.endsWith('.json')).sort();
+        for (const f of old.slice(0, Math.max(0, old.length - 20))) { try { fs.unlinkSync(path.join(dir, f)); } catch { } }
+        return json(res, { ok: true, path: path.join(dir, name) });
+      }
+      if (p === '/native/pack' && req.method === 'POST') {
+        const d = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+        if (!d.dest || !Array.isArray(d.files)) return json(res, { ok: false }, 400);
+        for (const f of d.files) if (!inRoots(f.path)) return json(res, { ok: false, err: 'Plik poza folderami projektu' }, 403);
+        const root = path.join(d.dest, String(d.name || 'Projekt').replace(/[\\/:*?"<>|]/g, '').slice(0, 60) + ' — Pokazy');
+        PK.state = 'running'; PK.done = 0; PK.total = d.files.length; PK.root = root; PK.err = '';
+        (async () => {
+          try {
+            fs.mkdirSync(path.join(root, 'Przygotowane'), { recursive: true });
+            fs.writeFileSync(path.join(root, 'projekt.json'), JSON.stringify(d.project || {}, null, 1));
+            for (const f of d.files) {
+              const target = path.join(root, 'Pliki', ...String(f.rel).split('/').map(x => x.replace(/[\\:*?"<>|]/g, '')));
+              fs.mkdirSync(path.dirname(target), { recursive: true });
+              const st = fs.statSync(f.path);
+              if (!fs.existsSync(target) || fs.statSync(target).size !== st.size) { await fs.promises.copyFile(f.path, target); fs.utimesSync(target, st.atime, st.mtime); }
+              for (const c of await native.cacheFilesOf(f.path)) { const sub = path.join(root, 'Przygotowane', path.basename(path.dirname(c))); fs.mkdirSync(sub, { recursive: true }); const t = path.join(sub, path.basename(c)); if (!fs.existsSync(t)) await fs.promises.copyFile(c, t); }
+              PK.done++;
+            }
+            PK.state = 'done';
+          } catch (e) { PK.state = 'error'; PK.err = String(e.message || e); log('pakowanie', PK.err); }
+        })();
+        return json(res, { ok: true, root });
+      }
+      if (p === '/native/packasset' && req.method === 'POST') {
+        const dir = fromB64(q.get('dir')), name = String(q.get('name') || '').replace(/[^\w.-]/g, '');
+        if (!dir || !name) return json(res, { ok: false }, 400);
+        fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, name), await readBody(req)); return json(res, { ok: true });
+      }
+      if (p === '/native/packstatus') return json(res, { ok: true, ...PK });
+      if (p === '/native/unpack') {
+        const dir = fromB64(q.get('dir')), src = path.join(dir, 'Przygotowane'); let n = 0;
+        roots.add(dir);
+        if (fs.existsSync(src)) for (const sub of fs.readdirSync(src)) {
+          const to = path.join(native.cacheDir, sub); fs.mkdirSync(to, { recursive: true });
+          for (const f of fs.readdirSync(path.join(src, sub))) { const t = path.join(to, f); if (!fs.existsSync(t)) { fs.copyFileSync(path.join(src, sub, f), t); n++; } }
+        }
+        return json(res, { ok: true, copied: n });
+      }
       if (p === '/native/guestdir') { const dir = fromB64(q.get('dir')); if (dir) { fs.mkdirSync(dir, { recursive: true }); roots.add(dir); ST.uploadDir = dir; } return json(res, { ok: true }); }
       if (p === '/native/gallery' && req.method === 'POST') {
         const d = JSON.parse((await readBody(req)).toString('utf8') || '{}');
@@ -100,8 +175,9 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
       }
       if (fp && !inRoots(fp)) return json(res, { ok: false, err: 'Poza dodanymi folderami' }, 403);
       if (p === '/native/file') return sendFile(req, res, fp);
-      if (p === '/native/analyze') { const r = await native.analyze(fp); if (r.kind === 'video') r.prepared = !!(await native.preparedPath(fp, 3840)); return json(res, { ok: true, ...r }); }
-      if (p === '/native/cache') { const f = await native.cacheFile(fp, q.get('k')); return f ? sendFile(req, res, f, 'image/jpeg') : send(res, 404, 'text/plain', '404'); }
+      if (p === '/native/analyze') { const r = await native.analyze(fp, +q.get('max') || 3840); if (r.kind === 'video') r.prepared = !!(await native.preparedPath(fp, +q.get('max') || 3840)); return json(res, { ok: true, ...r }); }
+      if (p === '/native/prepdisp') { const made = await native.ensureDisp(fp, +q.get('max') || 3840); return json(res, { ok: true, made }); }
+      if (p === '/native/cache') { const f = await native.cacheFile(fp, q.get('k'), +q.get('max') || 0); return f ? sendFile(req, res, f, 'image/jpeg') : send(res, 404, 'text/plain', '404'); }
       if (p === '/native/video') { const f = await native.preparedPath(fp, +q.get('max') || 3840); return f ? sendFile(req, res, f, 'video/mp4') : send(res, 404, 'text/plain', '404'); }
       if (p === '/native/prep') { native.prepEnqueue(fp, +q.get('max') || 3840); return json(res, { ok: true }); }
       if (p === '/native/exif') return json(res, { ok: true, exif: await native.exif(fp, (q.get('pick') || '').split(',').filter(Boolean)) });
@@ -142,7 +218,7 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
       if (p === '/api/info' && local) return json(res, { ips: lanIps(), port, app: true });
       if (p === '/api/sync' && local && req.method === 'POST') {
         const data = await readBody(req);
-        ST.token = q.get('k') || ''; ST.gtoken = q.get('g') || ''; ST.gflags = q.get('gf') || ''; if (data.length && data[0] === 0x7b) ST.state = data; ST.lastSync = now;
+        ST.token = q.get('k') || ''; ST.gtoken = q.get('g') || ''; ST.gflags = q.get('gf') || ''; if (q.get('i')) ST.itoken = q.get('i'); if (data.length && data[0] === 0x7b) ST.state = data; ST.lastSync = now;
         const cmds = ST.cmds; ST.cmds = [];
         let clients = 0; for (const t of ST.seen.values()) if (now - t < 6000) clients++;
         return json(res, { cmds, clients });
@@ -153,18 +229,22 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
         ST.thumb = data; ST.rev++; return json(res, { ok: true });
       }
       if (p.startsWith('/api/g/')) {
-        if (!ST.gtoken || q.get('g') !== ST.gtoken) return json(res, { ok: false }, 403);
+        const iOk = !!(ST.itoken && q.get('i') === ST.itoken && ST.importDir);
+        if (!iOk && (!ST.gtoken || q.get('g') !== ST.gtoken)) return json(res, { ok: false }, 403);
+        if (iOk && p === '/api/g/state') return json(res, { ok: true, offline: now - ST.lastSync > 10000, songs: false, upload: true, gallery: false, import: true, title: 'Import zdjęć z telefonu' });
+        if (iOk && p !== '/api/g/upload') return json(res, { ok: false }, 403);
         const gf = ST.gflags.split(',');
         if (p === '/api/g/state') return json(res, { ok: true, offline: now - ST.lastSync > 10000, songs: gf.includes('s'), upload: gf.includes('u') && !!ST.uploadDir, gallery: gf.includes('g') && ST.gallery.length > 0, title: ST.galleryTitle });
         if (p === '/api/g/upload' && req.method === 'POST') {
-          if (!gf.includes('u') || !ST.uploadDir) { req.resume(); return json(res, { ok: false, err: 'Wysyłanie zdjęć jest wyłączone.' }, 403); }
+          const upDir = iOk ? ST.importDir : ST.uploadDir;
+          if (!iOk && (!gf.includes('u') || !ST.uploadDir)) { req.resume(); return json(res, { ok: false, err: 'Wysyłanie zdjęć jest wyłączone.' }, 403); }
           const ip = clientIp(req), log10 = (ST.ulog.get(ip) || []).filter(t => now - t < 600000);
-          if (log10.length >= 80) { req.resume(); return json(res, { ok: false, err: 'Za dużo plików naraz — spróbuj za kilka minut.' }, 429); }
+          if (!iOk && log10.length >= 80) { req.resume(); return json(res, { ok: false, err: 'Za dużo plików naraz — spróbuj za kilka minut.' }, 429); }
           const name = safeName(q.get('name')), from = safeName(q.get('from'));
           if (!UP_EXT.test(name)) { req.resume(); return json(res, { ok: false, err: 'Ten rodzaj pliku nie jest obsługiwany.' }, 400); }
           const d = new Date(), stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}${String(d.getSeconds()).padStart(2, '0')}`;
-          let fname = `${stamp}_${(from || 'gosc').replace(/\s/g, '-')}_${name}`, full = path.join(ST.uploadDir, fname), n = 1;
-          while (fs.existsSync(full)) { fname = `${stamp}_${n++}_${name}`; full = path.join(ST.uploadDir, fname); }
+          let fname = iOk ? name : `${stamp}_${(from || 'gosc').replace(/\s/g, '-')}_${name}`, full = path.join(upDir, fname), n = 1;
+          while (fs.existsSync(full)) { fname = iOk ? `${path.basename(name, path.extname(name))}_${n++}${path.extname(name)}` : `${stamp}_${n++}_${name}`; full = path.join(upDir, fname); }
           const max = 2 * 1024 ** 3; let got = 0, tooBig = false;
           await new Promise(resolve => {
             const out = fs.createWriteStream(full);
@@ -174,7 +254,7 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
           if (tooBig || got === 0) { try { fs.unlinkSync(full); } catch { } return json(res, { ok: false, err: tooBig ? 'Plik jest za duży.' : 'Pusty plik.' }, 400); }
           log10.push(now); ST.ulog.set(ip, log10);
           const st = fs.statSync(full);
-          ST.cmds = [...ST.cmds, { c: 'gupload', t: JSON.stringify({ path: full, name: fname, rel: 'Od gości/' + fname, size: st.size, mtime: Math.round(st.mtimeMs), from }) }].slice(-60);
+          ST.cmds = [...ST.cmds, { c: iOk ? 'iupload' : 'gupload', t: JSON.stringify({ path: full, name: fname, rel: (iOk ? path.basename(upDir) : 'Od gości') + '/' + fname, size: st.size, mtime: Math.round(st.mtimeMs), from: iOk ? '' : from }) }].slice(-60);
           return json(res, { ok: true });
         }
         if (p.startsWith('/api/g/g') && !gf.includes('g')) return json(res, { ok: false }, 403);

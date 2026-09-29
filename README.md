@@ -9,6 +9,15 @@ mapa z trasą na planszy dnia. Motywy plansz (złoty, morski, kolorowy, natura, 
 Goście przez jeden kod QR: prośby o piosenki, wysyłanie zdjęć i filmów prosto do pokazu, galeria do pobrania —
 wszystko w sieci Wi-Fi, bez wysyłania czegokolwiek do internetu.
 
+Także: notatki prezentera i komentarze głosowe do zdjęć, pogoda i statystyki wyjazdu, przerzedzanie serii,
+Live Photos w ruchu, eksport pokazu do filmu MP4, import z karty SD / pendrive'a / telefonu (Wi-Fi),
+automatyczna kopia ustawień, skróty do projektów, kanał testowy aktualizacji.
+
+Wygląd i płynność: przejścia do wyboru (także osobno dla części), styl kinowy, animowane plansze,
+rozdzielczość dopasowana do telewizora, profil wydajności komputera, przygotowanie w kolejności pokazu,
+szybki start dużych projektów, licznik płynności filmów, strażnik okna pokazu, próba generalna,
+projekt na pendrive razem z przygotowanymi plikami.
+
 - **Instalator:** `Pokazy-Setup-X.Y.Z.exe` — aktualizuje się sam.
 - **Wersja przenośna:** `Pokazy-Portable-X.Y.Z.zip` — rozpakuj gdziekolwiek (także na pendrive),
   uruchom `Pokazy.exe`. Ustawienia i projekty są w folderze `dane` obok programu. Też aktualizuje się sama.

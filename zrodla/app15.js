@@ -118,6 +118,10 @@ if (NATIVE) {
     renderReopen();
     return true;
   }
+  window.__loadNativeFolder = (d, q) => loadNativeFolder(d, q);
+  window.__videoNeedsPrep = r => videoNeedsPrep(r);
+  window.__watchPrep = () => watchPrep();
+  window.__scanFolder = (d, w) => scanFolder(d, w);
   // „Dodaj folder” — okno wyboru systemu Windows; folder zostaje w projekcie na stałe
   pickFolder = async function () { const dir = await NATIVE.pickFolder(); if (dir) await loadNativeFolder(dir); };
   // przeciąganie folderów i plików na okno
@@ -146,13 +150,15 @@ if (NATIVE) {
   const analyzeBrowser = analyze;
   analyze = async function (it) {
     if (!it.file || !it.file.native) return analyzeBrowser(it);
-    const r = await (await fetch(nurl('analyze', it.file.fullPath))).json();
+    const r = await (await fetch(nurl('analyze', it.file.fullPath, `&max=${dispTarget()}`))).json();
     if (!r.ok) throw new Error(r.err || 'Nie udało się otworzyć pliku');
     it.hash = r.hash; it.dims = { w: r.w, h: r.h }; if (r.dur) it.dur = it.dur || r.dur; it.analyzed = true;
-    it.disp = !!r.disp; it.nv = r;
+    it.nv = { codec: r.codec, fps: r.fps, kbps: r.kbps, w: r.w, h: r.h, needDisp: r.needDisp, dispAt: r.dispAt || [] };
     if (r.prepared) it.prep = 3840;
     setThumb(it, nurl('cache', it.file.fullPath, '&k=thumb'));
-    if (it.kind === 'video' && !it.prep && videoNeedsPrep(r)) { it.prepWait = true; fetch(nurl('prep', it.file.fullPath, '&max=3840'), { method: 'POST' }); watchPrep(); }
+    // zapamiętaj wyniki — następne otwarcie projektu bez ponownej analizy
+    idb.put('meta', it.key, { hash: r.hash, w: r.w, h: r.h, dur: r.dur || null, nv: it.nv, prep: it.prep || 0 });
+    if (it.kind === 'video' && !it.prep) it.prepNeeded = videoNeedsPrep(r);   // przygotowanie ruszy w kolejności pokazu
   };
   const ensureThumbBrowser = ensureThumb;
   ensureThumb = async function (it) {
@@ -162,8 +168,9 @@ if (NATIVE) {
   const displayURLBrowser = displayURL;
   displayURL = function (it) {
     if (!it.file || !it.file.native) return displayURLBrowser(it);
-    if (it.kind === 'image') return Promise.resolve(it.disp ? nurl('cache', it.file.fullPath, '&k=disp') : it.file.url);
-    return Promise.resolve(it.prep ? nurl('video', it.file.fullPath, `&max=${it.prep}`) : it.file.url);
+    const T = dispTarget();
+    if (it.kind === 'image') { const nd = it.nv ? it.nv.needDisp && (/\.hei[cf]$/i.test(it.name) || Math.max(it.nv.w, it.nv.h) > T) : /\.hei[cf]$/i.test(it.name); return Promise.resolve(nd ? nurl('cache', it.file.fullPath, `&k=disp&max=${T}`) : it.file.url); }
+    return Promise.resolve(it.prep ? nurl('video', it.file.fullPath, `&max=${T}`) : it.file.url);
   };
   // które filmy przygotować: takie, których ten komputer nie odtworzy płynnie
   function videoNeedsPrep(r) {

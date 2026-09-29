@@ -16,6 +16,8 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 /* ---------- ustawienia i pamięć ---------- */
 // Projekty (wesele, wyjazd, urodziny…): każdy ma własne ustawienia, poprawki, ulubione i foldery.
 // Projekt „default” używa dawnych kluczy — ustawienia sprzed wprowadzenia projektów zostają.
+// otwarcie konkretnego projektu (skrót na pulpicie, lista w pasku zadań): ?projekt=…
+(() => { try { const p = new URLSearchParams(location.search).get('projekt'); if (p) { const l = JSON.parse(localStorage.getItem('pw.projects') || '[]'); if (p === 'default') localStorage.removeItem('pw.currentProject'); else if (l.some(x => x.id === p)) localStorage.setItem('pw.currentProject', p); history.replaceState(null, '', location.pathname); } } catch { } })();
 const PROJ = (() => { try { return localStorage.getItem('pw.currentProject') || 'default'; } catch { return 'default'; } })();
 const LSP = PROJ === 'default' ? 'pw.' : `pw.p_${PROJ}.`;
 const LS = {
@@ -282,9 +284,17 @@ const SRC_LABEL = {
   mvhd: 'Data zapisu filmu', name: 'Godzina z nazwy pliku', nameDay: 'Data z nazwy pliku (bez godziny)', mtime: 'Data modyfikacji pliku',
 };
 
+const parseCacheKey = f => `p:${f.name}|${f.size}|${f.lastModified}`;
+async function parseCached(it) {
+  const k = parseCacheKey(it.file);
+  try { const c = await idb.get('meta', k); if (c) return c; } catch { }
+  const m = it.kind === 'image' ? await parseImage(it.file) : await parseVideo(it.file);
+  idb.put('meta', k, m).catch(() => { });
+  return m;
+}
 async function extractMeta(it) {
   let m = {};
-  try { m = it.kind === 'image' ? await parseImage(it.file) : await parseVideo(it.file); } catch { m = {}; }
+  try { m = await parseCached(it); } catch { m = {}; }
   m.fname = parseFileName(it.name);
   it.meta = m;
   if (m.w && m.h && !it.dims) it.dims = { w: m.w, h: m.h };
@@ -483,12 +493,34 @@ function computeTimeline() {
 
   const anyFav = favMode && ready.some(it => (O[it.key] || {}).fav);
 
+  // przerzedzanie serii: prawie identyczne ujęcia z tego samego telefonu w krótkim czasie — zostają 1–2 najlepsze (reszta schowana, nic nie jest usuwane)
+  for (const it of ready) it.thinned = false;
+  if (S.thin) {
+    const imgs = ready.filter(it => it.kind === 'image' && it.hash && !it.dupOf && !it.live).sort((a, b) => a.t - b.t);
+    let grp = [];
+    const flush = () => {
+      if (grp.length >= 3) {
+        const keep = grp.length >= 6 ? 2 : 1, o = it => O[it.key] || {};
+        const score = it => (o(it).fav ? 1e13 : 0) + (o(it).hidden === false ? 1e12 : 0) + (it.size || 0);
+        const best = new Set(grp.slice().sort((a, b) => score(b) - score(a)).slice(0, keep));
+        for (const it of grp) if (!best.has(it) && !o(it).keepThin) it.thinned = true;
+      }
+      grp = [];
+    };
+    for (const it of imgs) {
+      const last = grp[grp.length - 1];
+      if (last && (it.device || '') === (last.device || '') && it.t - last.t <= 90000 && ham(it.hash, last.hash) <= 8) grp.push(it);
+      else { flush(); grp = [it]; }
+    }
+    flush();
+  }
   // co trafia do pokazu
   for (const it of ready) {
     const h = (O[it.key] || {}).hidden;
     let inShow = true;
     if (it.dupOf && S.hideDuplicates) inShow = false;
     if (it.live && !S.showLive) inShow = false;
+    if (it.thinned) inShow = false;
     if (it.how === 'unplaced' && !S.includeUnplaced) inShow = false;
     if (h === true) inShow = false; else if (h === false) inShow = true;
     if (anyFav && !(O[it.key] || {}).fav) inShow = false;

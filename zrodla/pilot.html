@@ -41,6 +41,7 @@ button small{font-size:11px;color:var(--muted)}
 button.big{min-height:84px;font-size:30px}
 button.play{background:var(--gold);color:#2A1D22;border-color:var(--gold)}
 button.play small{color:#4A3826}
+.pnote{padding:10px 12px;border-radius:12px;background:#2F2519;border:1px solid var(--gold);color:var(--gold2);font-size:16px;line-height:1.4;white-space:pre-wrap}
 .gpgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .gpgrid .g{display:grid;gap:3px}
 .gpgrid .im{aspect-ratio:4/3;border-radius:8px;background:#000 center/cover no-repeat}
@@ -156,6 +157,7 @@ svg{width:26px;height:26px}
 <main id="ui" hidden style="display:grid;gap:12px">
   <div class="now"><img id="thumb" alt="" hidden><div class="card" id="card" hidden></div><span class="lab" id="lab"></span><span class="pos" id="pos"></span><span class="zm" id="zm" hidden></span></div>
   <div class="names" id="names"></div>
+  <div class="pnote" id="pNote" hidden></div>
   <div class="nxwrap" id="nxWrap" hidden><div class="row" style="align-items:center"><span class="lbl" style="flex:1">Następne — dotknij, aby podejrzeć</span><button id="bAll" style="min-height:36px;flex:none;font-size:14px">📋 Wszystkie slajdy</button></div><div class="nxs" id="nxs"></div></div>
   <div class="retinfo" id="retInfo" hidden></div>
   <button id="bSkipCur" hidden style="min-height:40px;font-size:14px"></button>
@@ -520,6 +522,7 @@ function render(d) {
   if (!tsrc && $('#thumb').dataset.k !== s.tkey) { $('#thumb').removeAttribute('src'); $('#thumb').dataset.src = ''; }
   $('#thumb').dataset.k = s.tkey || '';
   renderNext(s.next || []);
+  $('#pNote').hidden = !s.note; $('#pNote').textContent = s.note ? '📝 ' + s.note : '';
   $('#retInfo').hidden = !s.returnTo; if (s.returnTo) $('#retInfo').textContent = `▶ Pokazane poza kolejnością — potem pokaz wraca do slajdu ${s.returnTo}`;
   $('#bSkipCur').hidden = isCard; $('#bSkipCur').textContent = s.curSkip ? '↩ Pokaż ten slajd ponownie w kolejce' : '⊘ Nie pokazuj tego slajdu ponownie w kolejce';
   $('#names').innerHTML = '';
