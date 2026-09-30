@@ -25,6 +25,7 @@ setInterval(() => {
 // wznowienie pokazu wyłącza oszczędzanie od razu
 const setPlayingE = setPlaying;
 setPlaying = function (p, ...a) { if (p) { Eco.since = 0; ecoSet(false); } return setPlayingE.call(this, p, ...a); };
+(() => { const f = $('#sAppFs'); if (f && window.__setAppFs) { f.checked = !!LSG.get('appFullscreen', false); f.onchange = () => window.__setAppFs(f.checked); } })();
 (() => { const el = $('#sEco'); if (el) { el.checked = S.eco !== false; el.onchange = () => { S.eco = el.checked; saveS(); if (!el.checked) ecoSet(false); }; } })();
 
 // start

@@ -202,9 +202,15 @@ if (NATIVE) {
   }
   // przy pokazie: nie usypiaj komputera
   const startShowOld = startShow;
-  startShow = async function (...a) { NATIVE.power(true); return startShowOld.apply(this, a); };
+  const appFs = () => !!LSG.get('appFullscreen', false);
+  const showFs = () => NATIVE.fullscreen(Show.on && !TV.on ? true : appFs(), Show.on && !TV.on);
+  startShow = async function (...a) { NATIVE.power(true); const r = await startShowOld.apply(this, a); showFs(); return r; };
+  const switchModeOld = switchMode;
+  switchMode = function (...a) { const r = switchModeOld.apply(this, a); setTimeout(showFs, 300); return r; };
+  if (appFs()) setTimeout(() => NATIVE.fullscreen(true, false), 500);
+  window.__setAppFs = on => { LSG.set('appFullscreen', !!on); if (!Show.on) NATIVE.fullscreen(!!on, false); };
   const exitShowOld = exitShow;
-  exitShow = function (...a) { NATIVE.power(false); return exitShowOld.apply(this, a); };
+  exitShow = function (...a) { NATIVE.power(false); const r = exitShowOld.apply(this, a); NATIVE.fullscreen(appFs(), false); return r; };
   // muzyka z folderu
   const pickMusicFolder = async () => {
     const dir = await NATIVE.pickFolder(); if (!dir) return;

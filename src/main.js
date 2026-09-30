@@ -135,6 +135,11 @@ ipcMain.on('native:power', (e, on) => {
   if (!on && power !== null) { powerSaveBlocker.stop(power); power = null; }
 });
 ipcMain.on('native:updateInstall', () => updater.install());
+// pełny ekran na poziomie Windows (zasłania też pasek zadań); w pokazie okno trzymane na wierzchu
+ipcMain.on('native:fullscreen', (e, { on, top }) => {
+  const w = BrowserWindow.fromWebContents(e.sender); if (!w) return;
+  try { w.setFullScreen(!!on); w.setAlwaysOnTop(!!(on && top), 'screen-saver'); } catch { }
+});
 ipcMain.on('native:setChannel', (e, ch) => updater.setChannel(ch === 'test' ? 'test' : 'stable'));
 // ostatnie projekty po kliknięciu prawym na ikonę w pasku zadań
 ipcMain.on('native:recentProjects', (e, list) => {

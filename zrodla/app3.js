@@ -115,7 +115,7 @@ function bindSettings() {
   if (S.ytUrl) ytDiag(ytLinkProblem(S.ytUrl));
   $('#sYTHost').value = S.ytHost || 'auto';
   $('#sYTHost').onchange = e => { S.ytHost = e.target.value; saveS(); YTP.stageUrl = null; YTP.cur = null; };
-  for (const r of $$('input[name=msrc]')) { r.checked = r.value === S.musicSource; r.onchange = () => { S.musicSource = r.value; saveS(); syncMusicUI(); }; }
+  for (const r of $$('input[name=msrc]')) { r.checked = r.value === S.musicSource; r.onchange = () => { S.musicSource = r.value; saveS(); syncMusicUI(); Music.switchSource(); }; }
   syncMusicUI();
 }
 function syncMusicUI() {
@@ -419,6 +419,16 @@ const Music = {
     } catch { }
   },
   stop() { cancelAnimationFrame(this.raf); this.pauseRaw(); this.suppressed = false; },
+  // przełączenie źródła (Pliki ↔ YouTube ↔ Bez): stare źródło milknie całkowicie, nowe rusza, jeśli muzyka ma grać
+  async switchSource() {
+    cancelAnimationFrame(this.raf);
+    if (this.audio) { try { this.audio.pause(); } catch { } }
+    if (YTP.ready) { try { YTP.player.pauseVideo(); } catch { } }
+    this.started = false; this.title = '';
+    if (S.musicSource !== 'youtube') $('#yt-holder').hidden = true;
+    if (Show.on && this.on && this.hasSource() && !this.suppressed) await this.start();
+    updHud(); if (typeof Remote !== 'undefined') Remote.push();
+  },
 };
 
 /* =========================================================
@@ -1034,8 +1044,13 @@ $('#importInput').onchange = async e => {
   try {
     const d = JSON.parse(await e.target.files[0].text());
     if (d.app !== 'pokaz-weselny') throw 0;
-    S = Object.assign({}, DEFAULTS, d.settings); O = d.overrides || {}; OFFS = d.offsets || {};
-    saveS(); saveO(); LS.set('offsets', OFFS); bindSettings(); refresh(); toast('Wczytano ustawienia.');
+    const merge = confirm('Połączyć z poprawkami, które już są w tym projekcie?\n\nOK — połącz (zalecane: nic nie zginie)\nAnuluj — zastąp wszystko zawartością kopii');
+    if (merge) {
+      S = Object.assign({}, DEFAULTS, S, d.settings);
+      const src = d.overrides || {}; for (const k of Object.keys(src)) O[k] = Object.assign({}, O[k] || {}, src[k]);
+      OFFS = Object.assign({}, OFFS, d.offsets || {});
+    } else { S = Object.assign({}, DEFAULTS, d.settings); O = d.overrides || {}; OFFS = d.offsets || {}; }
+    saveS(); saveO(); LS.set('offsets', OFFS); bindSettings(); refresh(); toast(`Wczytano kopię: ${Object.keys(d.overrides || {}).length} poprawionych plików.`);
   } catch { toast('To nie jest plik kopii ustawień pokazu.'); }
   e.target.value = '';
 };
