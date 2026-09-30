@@ -6,6 +6,9 @@
    Przygotowanie plików, jeśli jeszcze trwa, idzie dalej (to dobry moment), ale z niższym priorytetem.
    ========================================================= */
 const Eco = window.Eco = { on: false, since: 0 };
+// okno programu nie może „odjechać” (np. po fokusie na ukrytym polu) — przewijają się tylko panele w środku
+for (const el of [document.documentElement, document.body]) el.addEventListener('scroll', () => { if (el.scrollTop || el.scrollLeft) { el.scrollTop = 0; el.scrollLeft = 0; } });
+window.addEventListener('scroll', () => { if (window.scrollY || window.scrollX) window.scrollTo(0, 0); });
 function ecoWanted() { return S.eco !== false && Show.on && !MV.on && (!Show.playing || Ann.brk) && !(Show.video && !Show.video.paused); }
 function ecoSet(on) {
   if (Eco.on === on) return;
@@ -25,7 +28,7 @@ setInterval(() => {
 // wznowienie pokazu wyłącza oszczędzanie od razu
 const setPlayingE = setPlaying;
 setPlaying = function (p, ...a) { if (p) { Eco.since = 0; ecoSet(false); } return setPlayingE.call(this, p, ...a); };
-(() => { const f = $('#sAppFs'); if (f && window.__setAppFs) { f.checked = !!LSG.get('appFullscreen', false); f.onchange = () => window.__setAppFs(f.checked); } })();
+(() => { const f = $('#sAppFs'); if (f && window.__setAppFs) { f.checked = LSG.get('appFullscreen', true) !== false; f.onchange = () => window.__setAppFs(f.checked); } })();
 (() => { const el = $('#sEco'); if (el) { el.checked = S.eco !== false; el.onchange = () => { S.eco = el.checked; saveS(); if (!el.checked) ecoSet(false); }; } })();
 
 // start

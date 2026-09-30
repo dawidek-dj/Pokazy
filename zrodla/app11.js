@@ -34,7 +34,7 @@ const LEGEND = [
   ['M', 'muzyka włącz / wyłącz'], ['A', 'poprzedni utwór'], ['D', 'następny utwór'], ['N / Shift + N', 'następny / poprzedni utwór'], ['G', 'kod QR dla gości na ekranie (30 s, ponownie — ukryj)'], ['Z', 'ile zostało do końca pokazu'], ['+ −', 'głośność filmu (na zdjęciu: przybliżenie)'],
   ['U', 'dodaj do ulubionych'], ['I', 'nazwa pliku na ekranie'], ['O', 'otwórz plik w nowej karcie'], ['R', 'obróć'], ['H', 'usuń z pokazu'],
   ['0', 'cofnij przybliżenie'], ['P', 'pasek z przyciskami'], ['T', 'telewizor / ten ekran'], ['F', 'pełny ekran'],
-  ['B', 'blokada (tryb bezpieczny) — odblokuj kodem'], ['L', 'ta legenda'], ['Home / End', 'początek / koniec pokazu'], ['Esc', 'zakończ teledysk / cofnij przybliżenie / zamknij pokaz'],
+  ['B', 'blokada (tryb bezpieczny) — odblokuj kodem'], ['F11', 'program na pełnym ekranie / w oknie'], ['L', 'ta legenda'], ['Home / End', 'początek / koniec pokazu'], ['Esc', 'zakończ teledysk / cofnij przybliżenie / zamknij pokaz'],
 ];
 function toggleLegend() {
   if (!$('#modal').hidden && $('#modalBox .legend')) { closeModal(); return; }

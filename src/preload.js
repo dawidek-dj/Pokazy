@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('native', {
   onUpdate: cb => ipcRenderer.on('native:update', (e, u) => cb(u)),
   setChannel: ch => ipcRenderer.send('native:setChannel', ch),
   fullscreen: (on, top) => ipcRenderer.send('native:fullscreen', { on: !!on, top: !!top }),
+  appFsPref: on => ipcRenderer.send('native:appFsPref', !!on),
   recentProjects: list => ipcRenderer.send('native:recentProjects', list),
   desktopShortcut: (id, name) => ipcRenderer.invoke('native:desktopShortcut', { id, name }),
   saveVideo: name => ipcRenderer.invoke('native:saveVideo', name),

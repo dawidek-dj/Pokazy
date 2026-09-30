@@ -20,7 +20,7 @@
   --tile:150px;
 }
 *{box-sizing:border-box}
-html,body{height:100%;margin:0}
+html,body{height:100%;margin:0;overflow:hidden}
 body{background:var(--bg);color:var(--text);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
 button,input,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
@@ -73,8 +73,8 @@ label.chk input{accent-color:var(--gold);margin-top:4px}
 .dev .meta{font-size:12px;color:var(--muted);grid-column:1}
 .dev input{grid-row:1/3;grid-column:2}
 .seg{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
-.seg label{flex:1;text-align:center;padding:6px 8px;font-size:13px;cursor:pointer}
-.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{position:relative;flex:1;text-align:center;padding:6px 8px;font-size:13px;cursor:pointer}
+.seg input{position:absolute;inset:0;opacity:0;pointer-events:none;margin:0}
 .seg label:has(input:checked){background:var(--gold);color:#2A1D22;font-weight:600}
 .seg label:has(input:focus-visible){outline:2px solid var(--gold2);outline-offset:-2px}
 .warn{border-left:2px solid var(--rose);padding:6px 10px;background:#3A2530;font-size:13px;border-radius:0 6px 6px 0}

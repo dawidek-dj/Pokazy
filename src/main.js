@@ -48,7 +48,7 @@ const winFile = () => path.join(dataDir, 'okno.json');
 function loadWinState() { try { return JSON.parse(fs.readFileSync(winFile(), 'utf8')); } catch { return null; } }
 function saveWinState() {
   if (!mainWin || mainWin.isDestroyed() || mainWin.isFullScreen()) return;
-  try { fs.writeFileSync(winFile(), JSON.stringify({ bounds: mainWin.getNormalBounds(), max: mainWin.isMaximized() })); } catch { }
+  try { const old = loadWinState() || {}; fs.writeFileSync(winFile(), JSON.stringify({ bounds: mainWin.getNormalBounds(), max: mainWin.isMaximized(), fs: old.fs })); } catch { }
 }
 function createWindow() {
   const ws = loadWinState(), b = ws && ws.bounds;
@@ -61,7 +61,8 @@ function createWindow() {
     icon: path.join(__dirname, '..', 'build', 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: false, backgroundThrottling: false, spellcheck: false },
   });
-  mainWin.once('ready-to-show', () => { if (!ws || ws.max) mainWin.maximize(); mainWin.show(); });
+  // domyślnie od razu pełny ekran (F11 przełącza; opcja w sekcji „Program”)
+  mainWin.once('ready-to-show', () => { if (!ws || ws.max) mainWin.maximize(); if (!ws || ws.fs !== false) mainWin.setFullScreen(true); mainWin.show(); });
   mainWin.on('close', saveWinState);
   mainWin.webContents.setVisualZoomLevelLimits(1, 1).catch(() => { });
   // nie przechodź na inne strony (np. po upuszczeniu pliku obok strefy upuszczania)
@@ -136,6 +137,7 @@ ipcMain.on('native:power', (e, on) => {
 });
 ipcMain.on('native:updateInstall', () => updater.install());
 // pełny ekran na poziomie Windows (zasłania też pasek zadań); w pokazie okno trzymane na wierzchu
+ipcMain.on('native:appFsPref', (e, on) => { try { const s = loadWinState() || {}; s.fs = !!on; fs.writeFileSync(winFile(), JSON.stringify(s)); } catch { } });
 ipcMain.on('native:fullscreen', (e, { on, top }) => {
   const w = BrowserWindow.fromWebContents(e.sender); if (!w) return;
   try { w.setFullScreen(!!on); w.setAlwaysOnTop(!!(on && top), 'screen-saver'); } catch { }
