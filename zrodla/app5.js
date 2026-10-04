@@ -311,9 +311,9 @@ body{display:grid;grid-template-rows:auto minmax(0,1fr)}
 .bar span{color:#B5A5B1;font-size:13px;word-break:break-all}
 .bar a,.bar button{color:#F2E9DC;background:#35293A;border:1px solid #46384B;border-radius:999px;padding:7px 14px;text-decoration:none;font:inherit;cursor:pointer;white-space:nowrap}
 .stage{position:relative;overflow:auto;display:grid;place-items:center}
-.stage img,.stage video{max-width:100%;max-height:100%;display:block}
+.stage img,.stage video{position:absolute;inset:0;margin:auto;max-width:100%;max-height:100%;object-fit:contain;display:block}
 .stage.full{place-items:start}
-.stage.full img{max-width:none;max-height:none}
+.stage.full img{position:static;max-width:none;max-height:none;margin:0}
 .stage img{cursor:zoom-in}.stage.full img{cursor:zoom-out}
 .msg{color:#B5A5B1;font-size:16px}
 </style></head><body><div class="bar"><div class="t"><b></b><span></span></div><button id="zoomB" hidden>Pełny rozmiar</button><a id="dl">Zapisz kopię</a></div><div class="stage" id="st"><div class="msg">Wczytuję…</div></div></body></html>`);

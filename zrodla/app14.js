@@ -6,6 +6,7 @@ const Prep = { running: false, done: 0 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function prepLeft() { return items.filter(i => i.analyzed && needsDisp(i) && !i.disp && !i.dispFail).length; }
 function updPrepUI() {
+  if (window.native) return;   // w aplikacji stan przygotowania pokazuje jeden wskaźnik (app18)
   const el = $('#prepInfo'); if (!el) return;
   const left = prepLeft();
   el.hidden = !left && !Prep.running;
@@ -29,7 +30,7 @@ async function prepRun() {
     }
   } finally { Prep.running = false; updPrepUI(); }
 }
-heartbeat(() => { if (!Show.on && !Prep.running && Date.now() - (prepRun.last || 0) > 4000) { prepRun.last = Date.now(); if (prepLeft()) prepRun(); else updPrepUI(); } });
+heartbeat(() => { if (window.native) return; if (!Show.on && !Prep.running && Date.now() - (prepRun.last || 0) > 4000) { prepRun.last = Date.now(); if (prepLeft()) prepRun(); else updPrepUI(); } });
 
 /* =========================================================
    Odtwarzacz muzyki YouTube jako mały pasek (z możliwością powiększenia)

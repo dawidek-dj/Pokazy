@@ -158,6 +158,7 @@ function openTV() {
   d.close();
   for (const n of document.head.querySelectorAll('style, link[rel=stylesheet]')) d.head.append(d.importNode(n, true));
   const hint = d.createElement('div'); hint.className = 'tvhint'; hint.id = 'tvHint';
+  if (window.native) hint.hidden = true;   // aplikacja sama ustawia telewizor na pełnym ekranie i włącza dźwięk
   hint.innerHTML = '<b>Kliknij w dowolnym miejscu tego okna</b><span>włączy się pełny ekran i dźwięk filmów</span><small>Jeśli to okno jest na laptopie — najpierw przeciągnij je na telewizor.</small>';
   d.body.append(hint);
   TVDOC = d; TV.win = w; TV.on = true; TV.placed = false; TV.stripKey = '';
@@ -193,7 +194,7 @@ function tvClick() {
 }
 function tvLayout() {
   if (!TV.on) return;
-  const h = TVDOC.getElementById('tvHint'); if (h) h.hidden = !!TVDOC.fullscreenElement;
+  const h = TVDOC.getElementById('tvHint'); if (h) h.hidden = !!TVDOC.fullscreenElement || !!window.native;
   resetZoom(); if (Show.front) fitLayer(Show.front);
   if (Lock.on) kbLock();
   syncPreview(); updHud();

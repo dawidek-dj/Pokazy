@@ -227,6 +227,6 @@ heartbeat(() => {
   alertSet('ytend', !!(yi && yi.n > 3 && yi.i >= yi.n - 2 && !YTP.inQueue), 'info', `Kończy się playlista (utwór ${yi ? yi.i + 1 : ''} z ${yi ? yi.n : ''}) — potem zagra od początku.`);
   // okno na telewizorze bez pełnego ekranu
   if (TV.on && TVDOC && !TVDOC.fullscreenElement) { if (!Alerts.tvNoFs) Alerts.tvNoFs = now; } else Alerts.tvNoFs = 0;
-  alertSet('tvfs', !!Alerts.tvNoFs && now - Alerts.tvNoFs > 60000, 'info', 'Okno na telewizorze nie jest na pełnym ekranie — kliknij w nie raz.');
+  alertSet('tvfs', !window.native && !!Alerts.tvNoFs && now - Alerts.tvNoFs > 60000, 'info', 'Okno na telewizorze nie jest na pełnym ekranie — kliknij w nie raz.');
 });
 

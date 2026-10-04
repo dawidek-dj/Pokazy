@@ -15,7 +15,9 @@ function mvStart(link) {
   if (!Show.on) { toast('Teledysk włączysz w trakcie pokazu.'); return false; }
   if (location.protocol === 'file:') { flash('Teledysk działa tylko, gdy pokaz jest otwarty przez uruchom.bat.'); return false; }
   const first = !MV.on;
-  MV.on = true; MV.id = id; MV.title = ''; MV.state = -1; MV.started = false; MV.host = 'normal';
+  // ten sam utwór, który gra właśnie w tle (YouTube) → teledysk rusza od tego samego miejsca
+  let bgAt = 0; try { if (first && S.musicSource === 'youtube' && YTP.ready && Music.active()) { const vd = YTP.player.getVideoData(); if (vd && vd.video_id === id) bgAt = YTP.player.getCurrentTime() || 0; } } catch { }
+  MV.on = true; MV.id = id; MV.title = ''; MV.state = -1; MV.started = false; MV.host = 'normal'; MV.startAt = bgAt; MV.sameAsBg = bgAt > 0;
   if (S.mvAuto !== false) MV.vol = mvTargetVol();
   if (first) {
     // pokaz wstrzymany (o ile nie jest już przerwa), muzyka w tle wyciszona na czas teledysku
@@ -44,7 +46,7 @@ function mvLoad() {
   $('#mvMsg').textContent = 'Wczytuję teledysk…'; $('#mvMsg').hidden = false;
   wrap.hidden = false; void wrap.offsetWidth; wrap.classList.add('on');
   const base = location.href.replace(/[^/]*$/, '');
-  f.src = `${base}mv.html?v=${encodeURIComponent(MV.id)}&h=${MV.host}&vol=${S.mvAuto !== false ? 0 : MV.vol}`;
+  f.src = `${base}mv.html?v=${encodeURIComponent(MV.id)}&h=${MV.host}&vol=${S.mvAuto !== false ? 0 : MV.vol}${MV.startAt ? '&t=' + Math.floor(MV.startAt) : ''}`;
   clearTimeout(MV.wd);
   MV.wd = setTimeout(mvWatch, 9000);
 }
@@ -95,6 +97,7 @@ function mvStop() {
   const wrap = $('#mvWrap'), f = $('#mvFrame');
   wrap.classList.remove('on');
   setTimeout(() => { if (!MV.on) { wrap.hidden = true; f.src = 'about:blank'; } }, 600);
+  if (MV.musicHeld && MV.sameAsBg) { MV.musicHeld = false; MV.sameAsBg = false; Music.suppressed = false; Music.level = 0; Music.apply(); Music.next(); Music.fade(1, 1400); }   // utwór już wybrzmiał jako teledysk — dalej następny
   if (MV.musicHeld) {
     MV.musicHeld = false;
     Music.suppressed = false; Music.level = 0; Music.apply(); Music.resumeRaw(); Music.fade(1, 1400);

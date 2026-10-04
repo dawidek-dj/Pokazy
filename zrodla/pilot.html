@@ -568,7 +568,7 @@ async function poll() {
     const r = await fetchT(`/api/r/state?k=${encodeURIComponent(key)}`, {}, 3000);
     if (r.status === 403) { show('noKey'); $('#st').textContent = 'nieaktualny kod'; busy = false; updConn(); return; }
     const d = await r.json(); lastOk = Date.now(); everOk = true; last = d; render(d);
-  } catch { }
+  } catch { setTimeout(() => { busy = false; poll(); }, 600); }
   busy = false; updConn();
 }
 /* ---- alerty: wibracja + krótki dźwięk przy nowym ostrzeżeniu ---- */
@@ -629,9 +629,9 @@ function updConn() {
   dot.classList.remove('ok', 'mid');
   if (!everOk) { if (Date.now() - t0 > 6000 && key) { show('offline'); $('#st').textContent = 'brak połączenia'; } return; }
   let msg = '', bad = false;
-  if (age <= 12000) connBuzzed = false;
-  if (age > 12000) { msg = 'Brak połączenia z laptopem — sprawdź, czy telefon jest w tej samej sieci Wi-Fi.'; bad = true; if (!connBuzzed) { connBuzzed = true; buzz('warn'); } }
-  else if (age > 3500) msg = 'Słabe Wi-Fi — łączę się ponownie…';
+  if (age <= 20000) connBuzzed = false;
+  if (age > 20000) { msg = 'Brak połączenia z laptopem — sprawdź, czy telefon jest w tej samej sieci Wi-Fi.'; bad = true; if (!connBuzzed) { connBuzzed = true; buzz('warn'); } }
+  else if (age > 8000) msg = 'Słabe Wi-Fi — łączę się ponownie…';
   else if (last && last.offline) { msg = 'Laptop nie odpowiada — czy okno pokazu jest otwarte?'; bad = true; }
   c.hidden = !msg; c.textContent = msg; c.classList.toggle('bad', bad);
   dot.classList.add(msg ? (bad ? 'x' : 'mid') : 'ok');

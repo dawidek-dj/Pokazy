@@ -119,8 +119,9 @@ heartbeat(() => {
   const r = readiness(); Object.assign(Ready, r);
   const el = $('#prepInfo'); if (!el || items.some(it => it.prepWait)) return;
   const avg = Ready.rate.length ? Ready.rate.reduce((a, b) => a + b, 0) / Ready.rate.length : 800;
-  if (r.left) { el.hidden = false; el.textContent = `⚙ Przygotowanie pokazu: ${r.pct}% · gotowe pierwsze ${r.minutes} min · do końca ok. ${Math.max(1, Math.round(r.left * avg / 60000))} min`; }
-  else if (showList.length) { el.hidden = false; el.textContent = '✓ Pokaz przygotowany — wszystko gotowe do płynnego odtwarzania'; }
+  const txt = r.left ? `⚙ Przygotowuję pokaz: ${r.pct}% · gotowe pierwsze ${r.minutes} min · zostało ok. ${Math.max(1, Math.round(r.left * avg / 60000))} min` : '';
+  if (el.textContent !== txt) el.textContent = txt;
+  if (el.hidden !== !txt) el.hidden = !txt;   // gotowe — napis znika (stan widać w „Sprawdź pokaz”)
 });
 
 /* =========================================================

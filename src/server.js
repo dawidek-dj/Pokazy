@@ -309,7 +309,7 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
   }
 
   const srv = http.createServer((req, res) => { handle(req, res).catch(e => { log('błąd serwera', e); try { json(res, { ok: false }, 500); } catch { } }); });
-  srv.keepAliveTimeout = 5000;
+  srv.keepAliveTimeout = 65000; srv.headersTimeout = 66000;   // telefony długo trzymają połączenia — bez zrywania
   const listen = () => new Promise((res, rej) => {
     // IPv4 i IPv6 (localhost oraz telefon w sieci Wi-Fi); bez IPv6 — tylko IPv4
     const onErr = e => {

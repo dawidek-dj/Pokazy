@@ -447,7 +447,8 @@ const Drawer = {
       <div class="dw-prev" data-a="open" title="Otwórz w nowej karcie">${it.thumbURL ? `<img src="${it.thumbURL}" alt="">` : '<span class="hint">Podgląd się przygotowuje…</span>'}</div>
       <div class="dw-name"></div>
       <div class="why"></div>
-      <label class="field"><span>Godzina w pokazie</span><span class="timerow"><input type="datetime-local" step="1" data-a="time" value="${toLocalInput(it.t)}"><button class="btn small primary" data-a="timesave" hidden>Zapisz</button></span><small class="hint">Wpisz datę i godzinę, potem Enter albo „Zapisz”. Poprawiona godzina nie pojawia się na ekranie — tylko nazwa dnia.</small></label>
+      <label class="field"><span>Godzina w pokazie</span><span class="timerow"><input type="date" data-a="tdate" value="${toLocalInput(it.t).slice(0, 10)}"><input type="time" step="1" data-a="time" value="${toLocalInput(it.t).slice(11, 19) || toLocalInput(it.t).slice(11)}"><button class="btn small primary" data-a="timesave" hidden>Zapisz</button></span><small class="hint">Zmień godzinę (albo dzień), potem Enter albo „Zapisz”. Przyciski niżej przesuwają o minuty. Poprawiona godzina nie pojawia się na ekranie — tylko nazwa dnia.</small></label>
+      <span class="nudge"><button class="btn small ghost" data-a="tn" data-d="-600">−10 min</button><button class="btn small ghost" data-a="tn" data-d="-60">−1 min</button><button class="btn small ghost" data-a="tn" data-d="60">+1 min</button><button class="btn small ghost" data-a="tn" data-d="600">+10 min</button></span>
       ${o.t != null ? '<button class="linkbtn" data-a="timereset" style="justify-self:start">Cofnij ręczną zmianę godziny (wróć do automatycznej)</button>' : ''}
       ${o.t != null || o.dateSrc ? '<button class="linkbtn" data-a="auto" style="justify-self:start">Wróć do automatycznego ułożenia</button>' : ''}
       <div class="field"><span class="lbl">Znalezione daty</span><div class="cands"></div></div>
@@ -499,18 +500,21 @@ const Drawer = {
       vr.oninput = () => { d.querySelector('.volv').textContent = vr.value + '%'; };
       vr.onchange = () => { const x = ov(it.key); x.vol = +vr.value === 100 ? undefined : +vr.value / 100; cleanOv(it.key); saveO(); markTile(it); };
     }
-    const ti = d.querySelector('[data-a=time]'), tsave = d.querySelector('[data-a=timesave]'), t0 = ti.value;
+    const ti = d.querySelector('[data-a=time]'), td = d.querySelector('[data-a=tdate]'), tsave = d.querySelector('[data-a=timesave]'), t0 = td.value + 'T' + ti.value;
     let done = false;
     const commit = () => {
-      const v = ti.value; if (done || !v || v === t0) return;
+      const v = td.value + 'T' + ti.value; if (done || !td.value || !ti.value || v === t0) return;
       const [dd, tt] = v.split('T'); const [y, m, day] = dd.split('-').map(Number); const [h, mi, s = 0] = tt.split(':').map(Number);
       const t = new Date(y, m - 1, day, h, mi, s).getTime();
       if (!isFinite(t) || y < 1990 || y > 2100) return;
       done = true; ov(it.key).t = t; saveO(); refresh(); toast('Zapisano nową godzinę.', 1600);
     };
-    ti.addEventListener('input', () => { tsave.hidden = ti.value === t0; });
-    ti.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } });
-    ti.addEventListener('blur', () => setTimeout(commit, 200));
+    for (const el of [ti, td]) {
+      el.addEventListener('input', () => { tsave.hidden = td.value + 'T' + ti.value === t0; });
+      el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } });
+      el.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== ti && document.activeElement !== td) commit(); }, 200));
+    }
+    for (const b of d.querySelectorAll('[data-a=tn]')) b.onclick = e => { e.stopPropagation(); ov(it.key).t = it.t + (+b.dataset.d) * 1000; saveO(); refresh(); toast(`Przesunięto: ${b.textContent}`, 1200); };
     tsave.onclick = commit;
   }
 };

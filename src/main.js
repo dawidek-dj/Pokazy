@@ -64,6 +64,8 @@ function createWindow() {
   // domyślnie od razu pełny ekran (F11 przełącza; opcja w sekcji „Program”)
   mainWin.once('ready-to-show', () => { if (!ws || ws.max) mainWin.maximize(); if (!ws || ws.fs !== false) mainWin.setFullScreen(true); mainWin.show(); });
   mainWin.on('close', saveWinState);
+  mainWin.on('enter-full-screen', () => mainWin.webContents.send('native:fs', true));
+  mainWin.on('leave-full-screen', () => mainWin.webContents.send('native:fs', false));
   mainWin.webContents.setVisualZoomLevelLimits(1, 1).catch(() => { });
   // nie przechodź na inne strony (np. po upuszczeniu pliku obok strefy upuszczania)
   mainWin.webContents.on('will-navigate', (e, u) => { if (!u.startsWith(`http://localhost:${port}/`)) e.preventDefault(); });
@@ -137,6 +139,13 @@ ipcMain.on('native:power', (e, on) => {
 });
 ipcMain.on('native:updateInstall', () => updater.install());
 // pełny ekran na poziomie Windows (zasłania też pasek zadań); w pokazie okno trzymane na wierzchu
+ipcMain.on('native:winctl', (e, a) => {
+  const w = BrowserWindow.fromWebContents(e.sender); if (!w) return;
+  if (a === 'min') { if (w.isFullScreen()) { w.once('leave-full-screen', () => w.minimize()); w.setFullScreen(false); } else w.minimize(); }
+  else if (a === 'fs') w.setFullScreen(!w.isFullScreen());
+  else if (a === 'close') w.close();
+});
+ipcMain.handle('native:isFs', e => { const w = BrowserWindow.fromWebContents(e.sender); return !!(w && w.isFullScreen()); });
 ipcMain.on('native:appFsPref', (e, on) => { try { const s = loadWinState() || {}; s.fs = !!on; fs.writeFileSync(winFile(), JSON.stringify(s)); } catch { } });
 ipcMain.on('native:fullscreen', (e, { on, top }) => {
   const w = BrowserWindow.fromWebContents(e.sender); if (!w) return;

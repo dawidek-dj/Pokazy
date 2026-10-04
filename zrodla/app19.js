@@ -29,6 +29,12 @@ setInterval(() => {
 const setPlayingE = setPlaying;
 setPlaying = function (p, ...a) { if (p) { Eco.since = 0; ecoSet(false); } return setPlayingE.call(this, p, ...a); };
 (() => { const f = $('#sAppFs'); if (f && window.__setAppFs) { f.checked = LSG.get('appFullscreen', true) !== false; f.onchange = () => window.__setAppFs(f.checked); } })();
+// przyciski okna widoczne na pełnym ekranie (wtedy Windows chowa swoje)
+if (NATIVE && NATIVE.winctl) {
+  const setFs = on => { document.body.classList.toggle('fullscr', !!on); for (const w of $$('.winctl')) w.hidden = !on; };
+  NATIVE.onFs(setFs); NATIVE.isFs().then(setFs);
+  document.addEventListener('click', e => { const b = e.target.closest('.winctl button'); if (b) NATIVE.winctl(b.dataset.w); });
+}
 (() => { const el = $('#sEco'); if (el) { el.checked = S.eco !== false; el.onchange = () => { S.eco = el.checked; saveS(); if (!el.checked) ecoSet(false); }; } })();
 
 // start
