@@ -292,6 +292,13 @@ body.console-on.ytvis .cbottom{padding-bottom:78px}
 .rehearsal video{width:320px;height:180px;background:#000;border-radius:8px}
 .timerow{display:flex;gap:6px;flex-wrap:wrap}.timerow input{min-width:0}
 .nudge{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+/* filtr źródeł i przesuwanie godzin */
+#srcFilter{font:inherit;font-size:13px;padding:7px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--text);max-width:220px}
+#srcFilter.on{border-color:var(--gold);color:var(--gold2)}
+.srcbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 18px 10px;padding:10px 14px;border-radius:12px;background:var(--panel2);border:1px solid var(--gold)}
+.srcbar[hidden]{display:none}
+.srcbar b{font-weight:600;color:var(--gold2)}.srcbar .grow{flex:1}.srcbar small{color:var(--muted)}
+.srcbar input{width:80px;font:inherit;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text)}
 /* okno startowe, radio, ekran bez kabla */
 .start{display:grid;gap:16px}
 .st-head{display:grid;gap:2px;text-align:center}.st-head b{font:italic 500 40px/1.1 var(--serif);color:var(--gold2)}.st-head span{color:var(--muted)}
@@ -933,6 +940,7 @@ body.showing #yt-holder{z-index:99}
   </aside>
 
   <main id="main">
+    <div class="srcbar" id="srcBar" hidden></div>
     <section id="empty">
       <div class="hero">
         <h1>Wesele, minuta po minucie</h1>
@@ -951,6 +959,7 @@ body.showing #yt-holder{z-index:99}
       <button class="btn small ghost" id="redoBtn" hidden>↷ Ponów</button>
       <button class="btn small" id="reviewBtn" title="Przeglądaj pliki z tego widoku na całym ekranie: strzałki, U ulubione, H ukryj, R obróć">▶ Szybki przegląd</button>
       <div class="progress" id="progress" hidden><span id="progTxt"></span><span class="bar"><i id="progBar"></i></span></div>
+      <select id="srcFilter" aria-label="Źródło plików" title="Pokaż pliki z jednego telefonu, WhatsAppa, Messengera…"><option value="">Wszystkie źródła</option></select>
       <input type="text" id="search" placeholder="Szukaj nazwy pliku" aria-label="Szukaj nazwy pliku">
       <input type="range" id="tileSize" min="100" max="260" value="150" aria-label="Wielkość miniatur" style="width:90px">
     </div>

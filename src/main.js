@@ -138,6 +138,7 @@ ipcMain.on('native:power', (e, on) => {
 });
 ipcMain.on('native:updateInstall', () => updater.install());
 // pełny ekran na poziomie Windows (zasłania też pasek zadań); w pokazie okno trzymane na wierzchu
+ipcMain.on('native:tvMinimize', () => { for (const w of BrowserWindow.getAllWindows()) if (w !== mainWin && /telewizor/i.test(w.getTitle())) { try { w.setFullScreen(false); w.minimize(); } catch { } } });
 ipcMain.on('native:winctl', (e, a) => {
   const w = BrowserWindow.fromWebContents(e.sender); if (!w) return;
   if (a === 'min') { if (w.isFullScreen()) { w.once('leave-full-screen', () => w.minimize()); w.setFullScreen(false); } else w.minimize(); }

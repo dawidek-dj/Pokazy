@@ -312,6 +312,11 @@ async function extractMeta(it) {
   let dev;
   if (m.model) { const mk = (m.make || '').split(' ')[0]; dev = mk && !m.model.toLowerCase().startsWith(mk.toLowerCase()) && mk.toLowerCase() !== 'apple' ? `${mk} ${m.model}` : m.model; }
   else if (m.fname.whatsapp) dev = 'WhatsApp';
+  else if (/^received_\d+/i.test(it.name) || /messenger/i.test(it.path || '')) dev = 'Messenger';
+  else if (/^FB_IMG_\d+/i.test(it.name) || /facebook/i.test(it.path || '')) dev = 'Facebook';
+  else if (/^signal-\d{4}/i.test(it.name) || /(^|[\\/])signal([\\/]|$)/i.test(it.path || '')) dev = 'Signal';
+  else if (/telegram/i.test(it.path || '') || /^photo_\d{4}-\d{2}-\d{2}/i.test(it.name)) dev = 'Telegram';
+  else if (/^(screenshot|zrzut)/i.test(it.name)) dev = 'Zrzuty ekranu';
   else dev = 'Folder: ' + (it.path.includes('/') ? it.path.split('/').slice(0, -1).join('/') : it.source);
   it.device = dev;
 }
@@ -337,7 +342,7 @@ function computeTimeline() {
     let best = o.dateSrc ? it.cand.find(c => c.src === o.dateSrc) : null;
     if (!best) best = it.cand.reduce((a, c) => c.conf > a.conf ? c : a);
     it.best = best;
-    it.t = best.t + (best.src === 'mtime' || best.src === 'nameDay' ? 0 : offMs);
+    it.t = best.t + offMs;   // przesunięcie źródła (zegar telefonu, WhatsApp, Messenger…) — zawsze, gdy ustawione
     it.conf = best.conf;
     it.how = best.src; it.match = null; it.dupOf = null; it.live = null; it.review = false;
   }
@@ -462,10 +467,10 @@ function computeTimeline() {
     }
     // 4. WhatsApp: data z nazwy + godzina zapisania pliku tego samego dnia
     const fn = it.meta.fname;
-    if (fn.dayOnly && (ymd(new Date(it.mtime)) === fn.dayOnly || dk(it.mtime) === fn.dayOnly) && inW(it.mtime)) { it.t = it.mtime; it.how = 'wa'; it.review = true; continue; }
+    if (fn.dayOnly && (ymd(new Date(it.mtime)) === fn.dayOnly || dk(it.mtime) === fn.dayOnly) && inW(it.mtime + it.offMs)) { it.t = it.mtime + it.offMs; it.how = 'wa'; it.review = true; continue; }
     // 5. cokolwiek w czasie wesela
-    const any = it.cand.find(c => inW(c.src === 'mtime' || c.src === 'nameDay' ? c.t : c.t + it.offMs));
-    if (any && win) { it.t = any.src === 'mtime' || any.src === 'nameDay' ? any.t : any.t + it.offMs; it.how = 'approx'; it.review = true; continue; }
+    const any = it.cand.find(c => inW(c.t + it.offMs));
+    if (any && win) { it.t = any.t + it.offMs; it.how = 'approx'; it.review = true; continue; }
     if (!win) continue;
     // 6. nie udało się
     it.how = 'unplaced'; it.review = true; it.t = win.end - 1000 + (it.id % 997);

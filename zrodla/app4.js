@@ -125,12 +125,14 @@ function askStart(i = 0, fav = false) {
     b.innerHTML = `<h3>${fav ? '★ Pokaz ulubionych — gdzie wyświetlić?' : 'Gdzie wyświetlić pokaz?'}</h3>
       <button class="choice" data-m="tv"><b>Na telewizorze, sterowanie na laptopie</b><span>Goście widzą tylko zdjęcia i filmy. Na laptopie masz podgląd tego, co jest na telewizorze, kolejne zdjęcia, nazwy plików, ulubione, głośność i oś czasu. Po otwarciu okna na telewizorze kliknij w nie raz — włączy się pełny ekran i dźwięk.</span></button>
       ${ext === false ? `<p class="warn">Teraz telewizor pokazuje <b>kopię</b> ekranu laptopa. Naciśnij <b>Win + P</b> i wybierz <b>Rozszerz</b> (na Macu: Ustawienia systemowe → Wyświetlacze → wyłącz odbicie lustrzane). Ta opcja od razu się tu odblokuje.</p>` : ''}
+      ${window.native ? '<button class="choice" data-m="cast"><b>Bez kabla — na Smart TV przez Wi-Fi</b><span>Telewizor z przeglądarką otwiera krótki adres i wpisuje kod. Na laptopie masz pełny panel sterowania. Działa bez HDMI — telewizor i laptop w tej samej sieci Wi-Fi.</span></button>' : ''}
       <button class="choice" data-m="single"><b>Na tym ekranie</b><span>Pełny ekran na laptopie — przy połączeniu HDMI w trybie „Duplikuj” telewizor pokazuje to samo. Przyciski pojawiają się po ruszeniu myszką.</span></button>
       <div class="row" style="justify-content:flex-end;margin-top:6px"><button class="btn small ghost" data-close>Anuluj</button></div>`;
     const tvb = b.querySelector('[data-m=tv]');
     tvb.disabled = ext === false;
     b.querySelector(`[data-m=${ext === false ? 'single' : S.showMode}]`)?.classList.add('def');
-    for (const c of b.querySelectorAll('.choice')) c.onclick = () => { S.showMode = c.dataset.m; saveS(); favMode = fav; startShow(i, c.dataset.m); };
+    const cb = b.querySelector('[data-m=cast]'); if (cb) cb.disabled = false;
+    for (const c of b.querySelectorAll('.choice')) c.onclick = () => { const m = c.dataset.m; S.showMode = m === 'cast' ? S.showMode : m; saveS(); favMode = fav; window.__cast = m === 'cast'; startShow(i, m === 'cast' ? 'tv' : m); };
     (b.querySelector('.choice.def') || b.querySelector('.choice:not(:disabled)'))?.focus();
   };
   render();
