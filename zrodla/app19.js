@@ -37,20 +37,3 @@ if (NATIVE && NATIVE.winctl) {
 }
 (() => { const el = $('#sEco'); if (el) { el.checked = S.eco !== false; el.onchange = () => { S.eco = el.checked; saveS(); if (!el.checked) ecoSet(false); }; } })();
 
-// start
-Hist.last = JSON.stringify(O);
-bindSettings();
-bindExtraSettings();
-renderSidebar();
-renderTimeline();
-renderHeader();
-renderReopen();
-updUndoUI();
-updMVUI();
-updGReqUI();
-updProjUI();
-updGPUI();
-for (const P of Picker.inst) Picker.render(P);
-if (location.protocol === 'file:') $('#fileWarn').hidden = false;
-Remote.init();
-if (!NATIVE) offerRecovery();

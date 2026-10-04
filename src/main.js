@@ -104,7 +104,6 @@ function createWindow() {
     if (i.control && i.shift && i.key.toLowerCase() === 'i') { wc.toggleDevTools(); e.preventDefault(); }
     // jak w aplikacji: bez przybliżania strony i przypadkowego przeładowania (utrata trwającego pokazu)
     if (i.control && !i.shift && ['+', '=', '-', '0', 'r'].includes(i.key.toLowerCase())) e.preventDefault();
-    if (i.key === 'F5' && app.isPackaged) e.preventDefault();
     if (i.key === 'F11') { mainWin.setFullScreen(!mainWin.isFullScreen()); e.preventDefault(); }
   });
   mainWin.on('closed', () => { mainWin = null; });
@@ -146,6 +145,7 @@ ipcMain.on('native:winctl', (e, a) => {
   else if (a === 'close') w.close();
 });
 ipcMain.handle('native:isFs', e => { const w = BrowserWindow.fromWebContents(e.sender); return !!(w && w.isFullScreen()); });
+ipcMain.on('native:titlebar', (e, { color, symbol }) => { const w = BrowserWindow.fromWebContents(e.sender); try { w.setTitleBarOverlay({ color, symbolColor: symbol, height: 44 }); } catch { } });
 ipcMain.on('native:appFsPref', (e, on) => { try { const s = loadWinState() || {}; s.fs = !!on; fs.writeFileSync(winFile(), JSON.stringify(s)); } catch { } });
 ipcMain.on('native:fullscreen', (e, { on, top }) => {
   const w = BrowserWindow.fromWebContents(e.sender); if (!w) return;

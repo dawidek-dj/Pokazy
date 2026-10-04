@@ -269,7 +269,7 @@ function openExport() {
     const asset = async (blob, ext) => { const name = `a${ai++}.${ext}`; await fetch(`/native/exportasset?t=${NATIVE.token}&name=${name}`, { method: 'POST', body: blob }); return name; };
     for (const s of list) {
       if (s.items) {
-        const its = s.items.filter(it => it.file && it.file.native); if (!its.length) continue;
+        const its = s.items.filter(it => it.file && it.file.native && !(O[it.key] || {}).priv); if (!its.length) continue;   // prywatne nie trafiają do filmu
         const it = its[0], o = O[it.key] || {};
         if (it.kind === 'video') { if (vmax >= 0) segs.push({ type: 'video', path: it.file.fullPath, max: vmax, vol: (o.vol || 100) / 100 }); continue; }
         const seg = its.length > 1 ? { type: 'pair', paths: its.map(x => x.file.fullPath), rots: its.map(x => (O[x.key] || {}).rot || 0), dur: S.photoSec } : { type: 'image', path: it.file.fullPath, rot: o.rot || 0, dur: S.photoSec };

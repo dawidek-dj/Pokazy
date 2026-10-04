@@ -45,6 +45,7 @@ const UP_EXT = /\.(jpe?g|png|heic|heif|webp|gif|mp4|mov|m4v|webm|3gp|mkv)$/i;
 function createServer({ webDir, port = 8765, native = null, log = () => { }, tileDir = null, exporter = null, importer = null, drives = () => [], tmpDir = os.tmpdir() }) {
   const token = crypto.randomBytes(18).toString('hex');   // klucz tylko dla okna aplikacji (dostęp do plików)
   const roots = new Set();
+  const TJ = { state: 'idle', total: 0, done: 0, fail: 0, run: 0 };
   const PK = { state: 'idle', done: 0, total: 0, root: '', err: '' };   // pakowanie projektu                                 // foldery, które użytkownik dodał — tylko z nich wolno czytać
   const ST = { token: '', gtoken: '', gflags: '', state: Buffer.from('{}'), cmds: [], thumb: Buffer.alloc(0), rev: 0, lastSync: 0, seen: new Map(), ids: [], thumbs: new Map(), glast: new Map(),
     uploadDir: '', ulog: new Map(), gallery: [], galleryTitle: '', itoken: '', importDir: '', assetDir: '' };
@@ -106,6 +107,26 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
         job.assetDir = ST.assetDir; ST.assetDir = '';
         try { await exporter.start(job); return json(res, { ok: true }); } catch (e) { return json(res, { ok: false, err: e.message }, 409); }
       }
+      if (p === '/native/strip') { const f = await native.strip(fp); return f ? sendFile(req, res, f, 'image/jpeg') : send(res, 404, 'text/plain', '404'); }
+      // mapy do pobrania przed wyjazdem: kafelki zapisywane na dysku (powoli, grzecznie dla OpenStreetMap)
+      if (p === '/native/tiles' && req.method === 'POST' && tileDir) {
+        const list = (JSON.parse((await readBody(req)).toString('utf8') || '{}').tiles || []).filter(t => t && t.z >= 0 && t.z <= 17).slice(0, 4000);
+        TJ.total = list.length; TJ.done = 0; TJ.fail = 0; TJ.state = 'running'; const myRun = ++TJ.run;
+        (async () => {
+          for (const t of list) {
+            if (TJ.run !== myRun) return;
+            const f = path.join(tileDir, String(t.z), String(t.x), t.y + '.png');
+            if (!fs.existsSync(f)) {
+              try { const b = await httpGetBuf(`https://tile.openstreetmap.org/${t.z}/${t.x}/${t.y}.png`, { 'User-Agent': 'Pokazy/1.0 (prywatny pokaz zdjec)' }); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, b); await new Promise(r => setTimeout(r, 120)); }
+              catch { TJ.fail++; }
+            }
+            TJ.done++;
+          }
+          TJ.state = 'done';
+        })();
+        return json(res, { ok: true, total: list.length });
+      }
+      if (p === '/native/tilesstatus') return json(res, { ok: true, ...TJ });
       if (p === '/native/exportstatus') return json(res, { ok: true, ...exporter.status() });
       if (p === '/native/exportcancel') { exporter.cancel(); return json(res, { ok: true }); }
       // import z karty pamięci / pendrive'a

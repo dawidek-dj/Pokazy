@@ -292,6 +292,18 @@ body.console-on.ytvis .cbottom{padding-bottom:78px}
 .rehearsal video{width:320px;height:180px;background:#000;border-radius:8px}
 .timerow{display:flex;gap:6px;flex-wrap:wrap}.timerow input{min-width:0}
 .nudge{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+/* podgląd jak na telewizorze, przewijanie filmu myszką */
+.tvprev{position:relative;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden}
+.tvprev .bg{position:absolute;inset:-8%;background:center/cover no-repeat;filter:blur(16px) brightness(.5)}
+.tvprev img{position:absolute;inset:0;margin:auto;max-width:100%;max-height:100%;object-fit:contain}
+.tvprev .cap{position:absolute;left:3.5%;bottom:5%;font:italic 500 15px/1.2 var(--serif);color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.8);max-width:90%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tvprev.cine::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.55) 100%);pointer-events:none}
+.tile .scrub{position:absolute;inset:0;background-size:1000% 100%;background-repeat:no-repeat;border-radius:inherit;pointer-events:none;z-index:2}
+/* jasny wygląd programu (pokaz zostaje ciemny / w motywie) */
+body.light{--bg:#f5f0e8;--panel:#ffffff;--panel2:#efe7dc;--line:#d9cdbf;--text:#2b2127;--muted:#76676e;--gold:#9a7432;--gold2:#7d5a1e;--rose:#c0525c;--sage:#4f7a5c;color-scheme:light}
+body.light #show,body.light .tvprev{--bg:#221925;--panel:#2B2030;--panel2:#35293A;--line:#46384B;--text:#F2E9DC;--muted:#B5A5B1;--gold:#D8B878;--gold2:#EDD4A0;--rose:#E2939A;--sage:#9FBBA6;color-scheme:dark}
+body.light .btn.primary{color:#fff}
+body.light .chip.on,body.light .seg label:has(input:checked){color:#fff}
 /* przyciski okna na pełnym ekranie */
 .winctl{display:flex;gap:2px;margin-left:4px;-webkit-app-region:no-drag}
 .winctl[hidden]{display:none}
@@ -738,6 +750,7 @@ body.showing #yt-holder{z-index:99}
         <label class="chk"><input type="checkbox" id="sDayWeather"> <span>Pogoda na planszy dnia („☀ 31°C”, pobierana raz dla daty i miejsca zdjęć)</span></label>
         <label class="chk"><input type="checkbox" id="sTripStats"> <span>Statystyki na koniec (kilometry z GPS, miejscowości, dni, zdjęcia, filmy)</span></label>
         <label class="field"><span>Dodatkowe liczby do statystyk — jedna w linii</span><textarea id="sTripExtra" rows="3" placeholder="Kroki: 84 312&#10;Km samochodem: 1 250&#10;Lody: 23"></textarea></label>
+        <div class="field"><span>Dźwięk przy ogłoszeniach (muzyka na chwilę cichnie)</span><span class="row"><select id="sAnnSound" style="flex:1"><option value="auto">automatycznie (gong — przerwa, fanfara — tort i taniec, dzwonek — reszta)</option><option value="gong">zawsze gong</option><option value="dzwonek">zawsze dzwonek</option><option value="fanfara">zawsze fanfara</option><option value="cymbalki">zawsze cymbałki</option><option value="none">bez dźwięku</option></select><button class="btn small ghost" id="sAnnTest" type="button">▶ Posłuchaj</button></span></div>
         <div class="field"><span>Motyw plansz (kolory, czcionki, ozdobniki — pokaz i pilot)</span><div class="themes" id="themeBox"></div></div>
         <label class="chk"><input type="checkbox" id="sBreakBg"> <span>Tło przerwy: powoli przenikające, rozmyte ulubione zdjęcia (bez ulubionych — losowe z pokazu)</span></label>
         <label class="chk"><input type="checkbox" id="sNowPlay"> <span>„Teraz gra” — tytuł utworu na ekranie przy zmianie piosenki</span></label>
@@ -841,6 +854,11 @@ body.showing #yt-holder{z-index:99}
         <div class="row" style="flex-wrap:wrap"><button class="btn small" id="packBtn">💾 Zabierz projekt na pendrive / dysk</button><button class="btn small ghost" id="unpackBtn">📂 Otwórz projekt z pendrive'a</button></div>
         <p class="hint">„Zabierz projekt” kopiuje zdjęcia, filmy, przygotowane wersje, ustawienia i komentarze głosowe — na innym laptopie pokaz jest od razu płynny.</p>
         <label class="field"><span>Aktualizacje</span><select id="sUpdCh"><option value="stable">tylko stabilne (zalecane przed ważnym wydarzeniem)</option><option value="test">także testowe — nowości wcześniej</option></select></label>
+        <label class="field"><span>Wygląd programu (pokaz na telewizorze zostaje w swoim motywie)</span><select id="sUiTheme"><option value="dark">ciemny</option><option value="light">jasny — do pracy w dzień</option><option value="system">jak w Windows</option></select></label>
+        <label class="chk"><input type="checkbox" id="sPad"> <span>🎮 Pad do gier steruje pokazem (A pauza · B przerwa · X ulubione · Y muzyka · LB/RB albo ← → poprzedni/następny · ↑↓ utwór · Start pasek)</span></label>
+        <label class="chk"><input type="checkbox" id="sClicker"> <span>Klikacz prezentacyjny: przycisk „wygaś ekran” (B / .) = pauza zamiast blokady, F5 = rozpocznij pokaz</span></label>
+        <button class="btn small" id="sMaps" style="justify-self:start">🗺 Pobierz mapy do pokazu (bez internetu na miejscu)</button>
+        <small class="hint" id="mapInfo"></small>
         <label class="chk"><input type="checkbox" id="sAppFs"> <span>Program zawsze na pełnym ekranie (przełączanie: F11)</span></label>
         <label class="chk"><input type="checkbox" id="sEco"> <span>🍃 Oszczędzanie w pauzie i przerwie — animacje i praca w tle zwalniają (laptop mniej się grzeje i szumi)</span></label>
         <button class="btn small" id="sShortcut" style="justify-self:start">🖥 Skrót do tego projektu na pulpicie</button>

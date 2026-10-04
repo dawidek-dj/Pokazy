@@ -41,6 +41,14 @@ button small{font-size:11px;color:var(--muted)}
 button.big{min-height:84px;font-size:30px}
 button.play{background:var(--gold);color:#2A1D22;border-color:var(--gold)}
 button.play small{color:#4A3826}
+.rvx{position:fixed;inset:0;z-index:60;background:var(--bg);display:grid;grid-template-rows:auto 1fr auto auto auto auto;gap:8px;padding:max(10px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom))}
+.rv-top{display:flex;gap:8px;align-items:center}.rv-top b{flex:1;font:italic 500 22px/1 var(--serif);color:var(--gold2)}.rv-top select,.rv-top button{min-height:38px;flex:none;font-size:14px}
+.rv-stage{position:relative;min-height:0;display:grid;place-items:center;touch-action:none;overflow:hidden}
+.rv-card{position:relative;width:100%;height:100%;border-radius:16px;overflow:hidden;background:#000;transition:transform .25s ease,opacity .25s ease;will-change:transform}
+.rv-im{position:absolute;inset:0;background:center/contain no-repeat}
+.rv-tag{position:absolute;top:12px;left:12px;padding:6px 12px;border-radius:999px;font-weight:600;font-size:15px;opacity:0;transition:opacity .1s}
+.rv-info{display:grid;text-align:center}.rv-info small{color:var(--muted)}
+.rv-btns{display:flex;gap:8px;align-items:center}.rv-btns button{flex:1;min-height:52px;font-size:20px}.rv-btns button small{display:block;font-size:12px}
 .pnote{padding:10px 12px;border-radius:12px;background:#2F2519;border:1px solid var(--gold);color:var(--gold2);font-size:16px;line-height:1.4;white-space:pre-wrap}
 .gpgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .gpgrid .g{display:grid;gap:3px}
@@ -152,13 +160,15 @@ svg{width:26px;height:26px}
 <div class="alerts" id="alerts"></div>
 <div class="msg" id="noKey" hidden><b>Brak kodu pilota.</b><br>Na laptopie otwórz „Pilot w telefonie” i zeskanuj kod QR aparatem telefonu.</div>
 <div class="msg" id="offline" hidden><b>Brak połączenia z laptopem.</b><br>Sprawdź, czy okno pokazu na laptopie jest otwarte, a telefon i laptop są w tej samej sieci Wi-Fi (albo laptop jest podłączony do hotspotu tego telefonu).</div>
-<div class="msg" id="idle" hidden><b>Pokaz nie jest uruchomiony.</b><br>Włącz go na laptopie — pilot zadziała od razu.</div>
+<div class="msg" id="idle" hidden>
+  <button id="bReview2" style="min-height:48px;font-size:16px;margin:10px 0">🖼 Przegląd zdjęć przesuwaniem</button><b>Pokaz nie jest uruchomiony.</b><br>Włącz go na laptopie — pilot zadziała od razu.</div>
 
 <main id="ui" hidden style="display:grid;gap:12px">
   <div class="now"><img id="thumb" alt="" hidden><div class="card" id="card" hidden></div><span class="lab" id="lab"></span><span class="pos" id="pos"></span><span class="zm" id="zm" hidden></span></div>
   <div class="names" id="names"></div>
   <div class="pnote" id="pNote" hidden></div>
   <div class="nxwrap" id="nxWrap" hidden><div class="row" style="align-items:center"><span class="lbl" style="flex:1">Następne — dotknij, aby podejrzeć</span><button id="bAll" style="min-height:36px;flex:none;font-size:14px">📋 Wszystkie slajdy</button></div><div class="nxs" id="nxs"></div></div>
+  <button id="bReview" style="min-height:40px;font-size:15px">🖼 Przegląd zdjęć przesuwaniem</button>
   <div class="retinfo" id="retInfo" hidden></div>
   <button id="bSkipCur" hidden style="min-height:40px;font-size:14px"></button>
 
@@ -233,6 +243,14 @@ svg{width:26px;height:26px}
   </div>
 
 </main>
+<div class="rvx" id="rvx" hidden>
+  <div class="rv-top"><b>Przegląd zdjęć</b><select id="rvF"><option value="new">nieprzejrzane</option><option value="show">w pokazie</option><option value="all">wszystkie</option></select><button id="rvClose">Zamknij</button></div>
+  <div class="rv-stage" id="rvStage"><div class="rv-card" id="rvCard"><div class="rv-im" id="rvIm"></div><div class="rv-tag" id="rvTag"></div></div><p class="tip" id="rvMsg"></p></div>
+  <div class="rv-info"><b id="rvName"></b><small id="rvMeta"></small></div>
+  <div class="rv-btns"><button id="rvHide">✕<small>schowaj</small></button><button id="rvFav">★<small>ulubione</small></button><button id="rvKeep" class="play">✓<small>zostaw</small></button></div>
+  <div class="rv-btns"><button id="rvUndo">↶ Cofnij</button><span class="tip" id="rvCount"></span></div>
+  <p class="tip">Przesuń w prawo — zostaw · w lewo — schowaj z pokazu · w górę — ulubione. Nic nie jest usuwane z dysku.</p>
+</div>
 <div class="sheet" id="sheet" hidden><div class="sh-in">
   <div class="sh-im"><img id="shImg" alt=""></div>
   <b id="shName"></b><small id="shMeta"></small>
@@ -403,6 +421,58 @@ async function openAll() {
 $('#bAll').onclick = openAll;
 $('#alClose').onclick = () => { $('#allList').hidden = true; };
 $('#bSkipCur').onclick = () => send('skiptoggle', `&i=${(last && last.state ? last.state.idx : 1) - 1}`);
+// ---- przegląd zdjęć przesuwaniem
+const RVP = { list: [], i: 0, undo: [], f: 'new' };
+const rvVis = () => RVP.list.filter(x => RVP.f === 'all' || (RVP.f === 'show' ? x.inShow && !x.hidden : !x.rv));
+async function rvOpen() {
+  $('#rvx').hidden = false; $('#rvMsg').textContent = 'Wczytuję listę zdjęć…'; $('#rvCard').style.visibility = 'hidden';
+  const t0 = Date.now(); send('rvlist');
+  for (let i = 0; i < 20; i++) {
+    await new Promise(r => setTimeout(r, 600));
+    try { const r = await fetchT(thumbUrl('__review'), {}, 5000); if (r.status === 200) { const d = await r.json(); if (d.at >= t0 - 2000) { RVP.list = d.list; break; } } } catch { }
+  }
+  RVP.i = 0; rvShow();
+}
+function rvCur() { return rvVis()[RVP.i]; }
+function rvShow() {
+  const v = rvVis(), it = v[RVP.i], card = $('#rvCard');
+  $('#rvCount').textContent = v.length ? `${Math.min(RVP.i + 1, v.length)} z ${v.length}` : '';
+  if (!it) { card.style.visibility = 'hidden'; $('#rvMsg').textContent = RVP.list.length ? '🎉 Wszystko przejrzane w tym widoku.' : 'Nie udało się wczytać listy — czy program na laptopie jest włączony?'; $('#rvName').textContent = ''; $('#rvMeta').textContent = ''; return; }
+  $('#rvMsg').textContent = ''; card.style.visibility = ''; card.style.transform = ''; card.style.opacity = 1; $('#rvTag').style.opacity = 0;
+  $('#rvName').textContent = it.name; $('#rvMeta').textContent = [it.day, it.t, it.kind === 'video' ? 'film' : '', it.hidden ? 'schowane' : !it.inShow ? 'poza pokazem' : '', it.fav ? '★ ulubione' : ''].filter(Boolean).join(' · ');
+  const im = $('#rvIm'); im.style.backgroundImage = '';
+  const want = v.slice(RVP.i, RVP.i + 4).map(x => x.key); send('rvimg', '', want.join(','));
+  const load = n => { const i = new Image(); i.onload = () => { if (rvCur() === it) im.style.backgroundImage = `url("${i.src}")`; }; i.onerror = () => { if (n < 8 && rvCur() === it) setTimeout(() => load(n + 1), 1200); }; i.src = thumbUrl('rv:' + it.key) + '&r=' + n; };
+  load(0);
+}
+function rvDo(a) {
+  const it = rvCur(); if (!it) return;
+  RVP.undo.push({ k: it.key, prev: { hidden: it.hidden, fav: it.fav, rv: it.rv }, i: RVP.i });
+  send('rv', '', JSON.stringify({ k: it.key, a }));
+  it.rv = true; if (a === 'hide') it.hidden = true; if (a === 'keep') it.hidden = false; if (a === 'fav') { it.fav = true; it.hidden = false; }
+  const card = $('#rvCard'); card.style.transform = a === 'hide' ? 'translateX(-120%) rotate(-12deg)' : a === 'fav' ? 'translateY(-120%)' : 'translateX(120%) rotate(12deg)'; card.style.opacity = 0;
+  setTimeout(() => { if (RVP.f !== 'new' || a === 'undo') RVP.i++; rvShow(); }, 240);
+}
+$('#bReview').onclick = rvOpen; $('#bReview2').onclick = rvOpen;
+$('#rvClose').onclick = () => { $('#rvx').hidden = true; };
+$('#rvF').onchange = e => { RVP.f = e.target.value; RVP.i = 0; rvShow(); };
+$('#rvHide').onclick = () => rvDo('hide'); $('#rvKeep').onclick = () => rvDo('keep'); $('#rvFav').onclick = () => rvDo('fav');
+$('#rvUndo').onclick = () => { const u = RVP.undo.pop(); if (!u) return; const it = RVP.list.find(x => x.key === u.k); if (it) Object.assign(it, u.prev); send('rv', '', JSON.stringify({ k: u.k, a: 'restore', prev: u.prev })); const v = rvVis(); const j = v.indexOf(it); RVP.i = j >= 0 ? j : u.i; rvShow(); };
+(() => {
+  const st = $('#rvStage'), card = $('#rvCard'); let x0 = null, y0 = 0;
+  st.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; card.style.transition = 'none'; }, { passive: true });
+  st.addEventListener('touchmove', e => {
+    if (x0 == null) return; const dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+    card.style.transform = `translate(${dx}px, ${Math.min(0, dy)}px) rotate(${dx / 25}deg)`;
+    const tag = $('#rvTag'), up = dy < -60 && Math.abs(dy) > Math.abs(dx);
+    tag.textContent = up ? '★ ulubione' : dx > 0 ? '✓ zostaw' : '✕ schowaj'; tag.style.background = up ? 'var(--gold)' : dx > 0 ? 'var(--sage)' : 'var(--rose)'; tag.style.color = '#1a1418';
+    tag.style.opacity = Math.min(1, Math.max(Math.abs(dx), up ? -dy : 0) / 90);
+  }, { passive: true });
+  st.addEventListener('touchend', e => {
+    if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null; card.style.transition = '';
+    if (dy < -90 && Math.abs(dy) > Math.abs(dx)) rvDo('fav'); else if (dx > 90) rvDo('keep'); else if (dx < -90) rvDo('hide'); else { card.style.transform = ''; $('#rvTag').style.opacity = 0; }
+  });
+})();
 function renderNext(list) {
   const w = $('#nxWrap'), box = $('#nxs'), sig = list.map(n => n.i + n.key + n.ready).join('|');
   w.hidden = !list.length; if (box.dataset.sig === sig) return; box.dataset.sig = sig; box.replaceChildren();

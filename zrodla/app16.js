@@ -244,7 +244,7 @@ $('#cGPAll').onclick = () => { for (const k of GU.pending.slice()) guestAccept(k
 // galeria: lista zdjęć przekazywana serwerowi aplikacji (goście widzą miniatury i pobierają pliki)
 heartbeat(async () => {
   if (!NATIVE || !S.guestGallery || !Remote.ok) return;
-  const list = (S.galleryScope === 'fav' ? showList.filter(it => (O[it.key] || {}).fav) : showList).filter(it => it.file && it.file.native);
+  const list = (S.galleryScope === 'fav' ? showList.filter(it => (O[it.key] || {}).fav) : showList).filter(it => it.file && it.file.native && !(O[it.key] || {}).priv);   // prywatne nigdy w galerii
   const sig = list.length + ':' + (list[0] && list[0].key) + ':' + (list[list.length - 1] && list[list.length - 1].key) + ':' + S.galleryScope + ':' + projName();
   if (sig === GU.gsig || Date.now() - (GU.gat || 0) < 5000) return;
   GU.gsig = sig; GU.gat = Date.now();

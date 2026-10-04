@@ -208,7 +208,7 @@ runShowTest = async function (...a) {
 async function packProject() {
   if (!NATIVE) return;
   const dest = await NATIVE.pickFolder(); if (!dest) return;
-  const files = items.filter(it => it.file && it.file.native).map(it => ({ path: it.file.fullPath, rel: `${it.source || 'Pliki'}/${it.file._path || it.name}` }));
+  const files = items.filter(it => it.file && it.file.native && !(O[it.key] || {}).priv).map(it => ({ path: it.file.fullPath, rel: `${it.source || 'Pliki'}/${it.file._path || it.name}` }));
   const voices = Object.entries(O).filter(([, o]) => o.voice).map(([k]) => k);
   const tpl = (projList().find(x => x.id === PROJ) || {}).type || 'inne';
   const project = { app: 'pokaz-weselny', v: 1, pokazy: 2, name: projName(), type: tpl, settings: S, overrides: O, offsets: OFFS, voices: voices.map((k, i) => ({ key: k, file: `komentarz_${i}.webm` })), guestFrom: GU.from };

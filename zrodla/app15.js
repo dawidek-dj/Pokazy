@@ -91,7 +91,7 @@ const MIME_BY_EXT = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', h
 class NativeFile {
   constructor(e) {
     this.name = e.name; this.size = e.size; this.lastModified = e.mtime; this._path = e.rel; this.fullPath = e.path; this.native = true;
-    this.type = MIME_BY_EXT[extOf(e.name)] || ''; this.url = nurl('file', e.path);
+    this.type = MIME_BY_EXT[extOf(e.name)] || ''; this.url = nurl('file', e.path); this.side = e.side || null;
   }
   slice(a = 0, b) {
     const f = this, end = Math.min(b == null ? f.size : b, f.size) - 1;

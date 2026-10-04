@@ -491,8 +491,8 @@ const Remote = {
     // prośby gości i ich obsługa działają też, gdy pokaz nie jest uruchomiony
     const any = { greq: () => greqAdd(c), gacc: () => greqAccept(c.i, c.m === 'next' ? 'next' : c.m === 'now' ? 'now' : 'end'), gdel: () => greqDel(c.i), gscreen: () => greqScreen(c.i),
       qup: () => queueMove(c.i, -1), qdown: () => queueMove(c.i, 1), qfirst: () => queueMove(c.i, 'first') };
-    any.gupload = () => guestUpload(c); any.iupload = () => ownerUpload(c); any.gpacc = () => guestAccept(c.t); any.gprej = () => guestReject(c.t); any.gpaccall = () => { for (const k of GU.pending.slice()) guestAccept(k); };
-    if (any[a] && (c.i !== undefined || ['greq', 'gupload', 'iupload', 'gpacc', 'gprej', 'gpaccall'].includes(a))) { any[a](); this.push(); return; }
+    any.gupload = () => guestUpload(c); any.iupload = () => ownerUpload(c); any.rvlist = () => rvList(); any.rv = () => rvApply(c); any.rvimg = () => rvImgReq(c.t); any.gpacc = () => guestAccept(c.t); any.gprej = () => guestReject(c.t); any.gpaccall = () => { for (const k of GU.pending.slice()) guestAccept(k); };
+    if (any[a] && (c.i !== undefined || ['greq', 'gupload', 'iupload', 'gpacc', 'gprej', 'gpaccall', 'rvlist', 'rv', 'rvimg'].includes(a))) { any[a](); this.push(); return; }
     if (!Show.on) return;
     const map = {
       next: nextSlide, prev: prevSlide, toggle: () => setPlaying(!Show.playing),
