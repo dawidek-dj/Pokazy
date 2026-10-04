@@ -1,0 +1,76 @@
+# Buduje aplikację Pokazy na Windows i publikuje nową wersję:
+#   • Pokazy-Setup-X.Y.Z.exe     — instalator (aktualizuje się sam)
+#   • Pokazy-Portable-X.Y.Z.zip  — wersja przenośna (też aktualizuje się sama)
+# Uruchamiasz ręcznie: zakładka Actions → „Zbuduj i wydaj Pokazy” → Run workflow → wpisz numer wersji.
+name: Zbuduj i wydaj Pokazy
+
+on:
+  workflow_dispatch:
+    inputs:
+      wersja:
+        description: 'Numer nowej wersji, np. 1.0.1 (zawsze wyższy niż poprzedni)'
+        required: true
+      kanal:
+        description: 'Kanał: stabilna (dla wszystkich) albo testowa (tylko dla programów z włączonymi aktualizacjami testowymi)'
+        type: choice
+        options: [stabilna, testowa]
+        default: stabilna
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Pobierz pliki projektu
+        uses: actions/checkout@v5
+
+      - name: Sprawdź układ plików
+        shell: bash
+        run: |
+          BRAK=""
+          for f in package.json package-lock.json src/main.js src/server.js zrodla/build.py zrodla/index.html build/icon.ico; do
+            [ -f "$f" ] || BRAK="$BRAK $f"
+          done
+          if [ -n "$BRAK" ]; then
+            echo "::error::Brakuje plików w głównym folderze repozytorium:$BRAK"
+            if [ -d pokazy-aplikacja ]; then echo "::error::Folder 'pokazy-aplikacja' jest wgrany w całości. Trzeba wgrać jego ZAWARTOŚĆ (foldery src, zrodla, build, .github i pliki), a sam folder 'pokazy-aplikacja' usunąć."; fi
+            exit 1
+          fi
+          if [ -d pokazy-aplikacja ]; then echo "::warning::W repozytorium jest też stary folder 'pokazy-aplikacja' — nie jest używany, można go usunąć."; fi
+          echo "Układ plików poprawny."
+
+      - name: Przygotuj Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Przygotuj Pythona
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Złóż stronę pokazu ze źródeł
+        run: python zrodla/build.py web --app
+
+      - name: Ustaw numer wersji i adres repozytorium
+        shell: bash
+        run: |
+          WERSJA="${{ inputs.wersja }}"; WERSJA="${WERSJA#v}"; WERSJA="${WERSJA// /}"
+          npm pkg set version="$WERSJA"
+          npm pkg set pokazRepo=${{ github.repository }}
+
+      - name: Zainstaluj biblioteki
+        run: npm ci --no-audit --no-fund
+
+      - name: Zbuduj i opublikuj
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          npx electron-builder --win --x64 --publish always
+          -c.publish.provider=github
+          -c.publish.owner=${{ github.repository_owner }}
+          -c.publish.repo=${{ github.event.repository.name }}
+          -c.publish.releaseType=${{ inputs.kanal == 'testowa' && 'prerelease' || 'release' }}
