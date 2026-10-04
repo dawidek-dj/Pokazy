@@ -81,9 +81,9 @@ function createExporter({ ffmpegPath, cacheDir, native, log = () => { } }) {
       return run(['-i', jpg, ...au.inputs, '-filter_complex', `[0:v]${vf}[vo];${au.filter}`, '-map', '[vo]', '-map', '[ao]', '-t', d.toFixed(2), ...venc(), ...aenc, out]).then(r => ({ r, out }));
     }
     if (s.type === 'video') {
-      const pr = await native.probe(s.path), dur = Math.min(pr.dur || 10, s.max > 0 ? s.max : Infinity);
+      const pr = await native.probe(s.path), dur = Math.min((pr.dur || 10) - (s.ss || 0), s.max > 0 ? s.max : Infinity);
       const vf = `scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:black,fps=${FPS},${fade(dur)},format=yuv420p`;
-      const args = ['-t', dur.toFixed(2), '-i', s.path];
+      const args = [...(s.ss ? ['-ss', String(s.ss)] : []), '-t', dur.toFixed(2), '-i', s.path];
       let af;
       if (pr.audio) af = `[0:a]aresample=48000,volume=${(s.vol || 1).toFixed(2)},afade=t=in:st=0:d=0.2,afade=t=out:st=${Math.max(0, dur - 0.4).toFixed(2)}:d=0.4[ao]`;
       else { args.push('-f', 'lavfi', '-t', dur.toFixed(2), '-i', 'anullsrc=r=48000:cl=stereo'); af = '[1:a]anull[ao]'; }
@@ -185,3 +185,42 @@ function createImporter({ log = () => { } }) {
   return { start, status: () => ({ ...J }) };
 }
 module.exports = { createExporter, createImporter, drives };
+
+/* ---- album do wysłania: folder z albumem otwieranym w zwykłej przeglądarce (bez instalacji) ---- */
+function createAlbumer({ native, log = () => { } }) {
+  const J = { state: 'idle' };
+  async function start(job) {
+    if (J.state === 'running') throw new Error('Album już powstaje.');
+    const root = path.join(job.dest, String(job.title || 'Album').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 60) + ' — album');
+    Object.assign(J, { state: 'running', done: 0, total: job.items.length, root, err: '' });
+    (async () => {
+      try {
+        for (const d of ['zdjecia', 'miniatury', 'filmy']) await fsp.mkdir(path.join(root, d), { recursive: true });
+        const list = [];
+        for (const [i, it] of job.items.entries()) {
+          const n = String(i + 1).padStart(4, '0');
+          try {
+            if (native) await native.analyze(it.path).catch(() => { });
+            const th = native && await native.cacheFile(it.path, 'thumb').catch(() => null);
+            if (it.kind === 'image') {
+              let src = it.path; const d = native && await native.cacheFile(it.path, 'disp').catch(() => null); if (d) src = d;
+              await sharp(src, { failOn: 'none', limitInputPixels: false }).rotate().rotate(it.rot || 0).resize(1920, 1920, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 86 }).toFile(path.join(root, 'zdjecia', n + '.jpg'));
+              await sharp(th || src, { failOn: 'none' }).rotate(it.rot || 0).resize(420, 420, { fit: 'inside' }).jpeg({ quality: 76 }).toFile(path.join(root, 'miniatury', n + '.jpg'));
+              list.push({ k: 'i', f: `zdjecia/${n}.jpg`, m: `miniatury/${n}.jpg`, p: it.part || '', t: it.time || '', c: it.cap || '', o: it.name });
+            } else {
+              const prep = native && await native.preparedPath(it.path, 3840).catch(() => null), src = prep || it.path, ext = prep ? '.mp4' : path.extname(it.path).toLowerCase();
+              await fsp.copyFile(src, path.join(root, 'filmy', n + ext));
+              if (th) await fsp.copyFile(th, path.join(root, 'miniatury', n + '.jpg'));
+              list.push({ k: 'v', f: `filmy/${n}${ext}`, m: th ? `miniatury/${n}.jpg` : '', p: it.part || '', t: it.time || '', c: it.cap || '', o: it.name });
+            }
+          } catch (e) { log('album: pominięto', it.path, e.message); }
+          J.done = i + 1;
+        }
+        await fsp.writeFile(path.join(root, 'Otwórz album.html'), String(job.html || '').replace('/*__ALBUM__*/[]', JSON.stringify({ title: job.title, sub: job.sub || '', items: list })));
+        J.state = 'done';
+      } catch (e) { J.state = 'error'; J.err = String(e.message || e); log('album', J.err); }
+    })();
+  }
+  return { start, status: () => ({ ...J }) };
+}
+module.exports.createAlbumer = createAlbumer;

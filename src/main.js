@@ -22,7 +22,7 @@ if (!app.requestSingleInstanceLock()) { app.quit(); return; }
 
 const { createNative } = require('./native');
 const { createServer } = require('./server');
-const { createExporter, createImporter, drives } = require('./export');
+const { createExporter, createImporter, createAlbumer, drives } = require('./export');
 const updater = require('./update');
 let mainWin = null, server = null, native = null, power = null, port = 8765;
 const projArg = argv => { const a = (argv || []).find(x => /^--projekt=/.test(x)); return a ? a.slice(10).replace(/[^\w-]/g, '') : ''; };
@@ -38,7 +38,7 @@ async function startServer() {
   native = createNative({ cacheDir: path.join(dataDir, 'cache'), ffmpegPath: ffmpegPath(), log });
   for (const p of [8765, 8766, 8767, 8768]) {
     server = createServer({ webDir: path.join(__dirname, '..', 'web'), port: p, native, log, tileDir: path.join(dataDir, 'cache', 'mapa'),
-      exporter: createExporter({ ffmpegPath: ffmpegPath(), cacheDir: path.join(dataDir, 'cache'), native, log }), importer: createImporter({ log }), drives, tmpDir: path.join(dataDir, 'cache') });
+      exporter: createExporter({ ffmpegPath: ffmpegPath(), cacheDir: path.join(dataDir, 'cache'), native, log }), importer: createImporter({ log }), albumer: createAlbumer({ native, log }), drives, tmpDir: path.join(dataDir, 'cache') });
     try { await server.listen(); port = p; if (p !== 8765) log('port 8765 zajęty, używam', p); return; } catch (e) { log('port', p, e.message); }
   }
   throw new Error('Nie udało się uruchomić serwera (porty 8765–8768 zajęte).');

@@ -27,20 +27,3 @@ const gotoM = goto;
 goto = async function (i) { MP.back = false; return gotoM(i); };
 (() => { const el = $('#sMusicOnPause'); if (el) { el.checked = !!S.musicOnPause; el.onchange = () => { S.musicOnPause = el.checked; saveS(); }; } })();
 
-// start
-Hist.last = JSON.stringify(O);
-bindSettings();
-bindExtraSettings();
-renderSidebar();
-renderTimeline();
-renderHeader();
-renderReopen();
-updUndoUI();
-updMVUI();
-updGReqUI();
-updProjUI();
-updGPUI();
-for (const P of Picker.inst) Picker.render(P);
-if (location.protocol === 'file:') $('#fileWarn').hidden = false;
-Remote.init();
-if (!NATIVE) offerRecovery();

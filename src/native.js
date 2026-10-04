@@ -265,6 +265,25 @@ function createNative({ cacheDir, ffmpegPath, log = () => { } }) {
     const exifr = require('exifr');
     return (await exifr.parse(b, { pick, reviveValues: false, translateValues: false, mergeOutput: true, tiff: true, exif: true }).catch(() => null)) || {};
   }
+  async function highlights(p, target = 45) {
+    const pr = await probe(p), dur = pr.dur || 0;
+    if (dur < 60) return { dur, clips: [] };
+    const n = Math.ceil(dur), loud = new Array(n).fill(-90), move = new Array(n).fill(0);
+    if (pr.audio) {
+      const r = await run(['-hide_banner', '-i', p, '-vn', '-af', 'aresample=8000,asetnsamples=8000,astats=metadata=1:reset=1,ametadata=print:key=lavfi.astats.Overall.RMS_level', '-f', 'null', '-']);
+      let i = 0; for (const m of r.err.matchAll(/RMS_level=(-?[\d.]+|-inf)/g)) { if (i < n) loud[i] = m[1] === '-inf' ? -90 : +m[1]; i++; }
+    }
+    { const r = await run(['-hide_banner', '-i', p, '-an', '-vf', "fps=2,scale=160:-2,select='gte(scene,0)',metadata=print:key=lavfi.scene_score", '-f', 'null', '-']);
+      let i = 0; for (const m of r.err.matchAll(/scene_score=([\d.]+)/g)) { const s = Math.floor(i / 2); if (s < n) move[s] = Math.max(move[s], +m[1]); i++; } }
+    const norm = a => { const lo = Math.min(...a), hi = Math.max(...a); return a.map(v => hi > lo ? (v - lo) / (hi - lo) : 0); };
+    const L = norm(loud), M = norm(move), sc = L.map((v, i) => v * 0.65 + M[i] * 0.35);
+    const W = 8, win = []; for (let i = 0; i + W <= n; i++) { let s = 0; for (let k = 0; k < W; k++) s += sc[i + k]; win.push([s / W, i]); }
+    win.sort((a, b) => b[0] - a[0]);
+    const clips = []; let total = 0;
+    for (const [, s] of win) { if (total >= target) break; if (clips.some(c => s < c[1] + 2 && s + W > c[0] - 2)) continue; clips.push([s, s + W]); total += W; }
+    clips.sort((a, b) => a[0] - b[0]);
+    return { dur, clips };
+  }
   async function strip(p) {
     const st = await fsp.stat(p), k = keyOf(p, st), f = cp('strip', k, '.jpg');
     if (await exists(f)) return f;
@@ -274,6 +293,6 @@ function createNative({ cacheDir, ffmpegPath, log = () => { } }) {
     return r.code === 0 && (await exists(f)) ? f : null;
   }
   function shutdown() { for (const w of pool) w.terminate(); }
-  return { analyze, ensureDisp, cacheFilesOf, cacheDir, exif, strip, cacheFile, probe, preparedPath, prepEnqueue, prepStatus, encoders, scan, shutdown, IMG, VID, AUD };
+  return { analyze, ensureDisp, cacheFilesOf, cacheDir, exif, strip, highlights, cacheFile, probe, preparedPath, prepEnqueue, prepStatus, encoders, scan, shutdown, IMG, VID, AUD };
 }
 module.exports = { createNative };

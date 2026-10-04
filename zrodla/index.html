@@ -292,6 +292,16 @@ body.console-on.ytvis .cbottom{padding-bottom:78px}
 .rehearsal video{width:320px;height:180px;background:#000;border-radius:8px}
 .timerow{display:flex;gap:6px;flex-wrap:wrap}.timerow input{min-width:0}
 .nudge{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+/* okno startowe, radio, ekran bez kabla */
+.start{display:grid;gap:16px}
+.st-head{display:grid;gap:2px;text-align:center}.st-head b{font:italic 500 40px/1.1 var(--serif);color:var(--gold2)}.st-head span{color:var(--muted)}
+.st-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.st-card{display:grid;gap:4px;text-align:left;padding:14px 16px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;font:inherit}
+.st-card:hover{border-color:var(--gold)}.st-card.cur{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.st-card b{font:italic 500 21px/1.2 var(--serif);color:var(--gold2)}.st-card small{color:var(--muted)}.st-card span{color:var(--gold);font-size:13px;margin-top:4px}
+.st-new{display:grid;gap:8px;padding-top:6px;border-top:1px solid var(--line)}.st-new input{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.radiobox{display:grid;gap:8px;margin-top:8px}.radiobox input{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text)}
+.castaddr{font:600 26px/1.2 var(--sans);color:var(--gold2);text-align:center;padding:10px;border-radius:12px;background:var(--panel2)}.castpin{font-size:30px;letter-spacing:.2em;color:var(--gold2)}
 /* podgląd jak na telewizorze, przewijanie filmu myszką */
 .tvprev{position:relative;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden}
 .tvprev .bg{position:absolute;inset:-8%;background:center/cover no-repeat;filter:blur(16px) brightness(.5)}
@@ -775,6 +785,13 @@ body.showing #yt-holder{z-index:99}
           <label><input type="radio" name="msrc" value="none">Bez</label>
           <label><input type="radio" name="msrc" value="files">Pliki</label>
           <label><input type="radio" name="msrc" value="youtube">YouTube</label>
+          <label><input type="radio" name="msrc" value="radio">Radio</label>
+        </div>
+        <div class="radiobox" id="radioBox" hidden>
+          <label class="field"><span>Adres strumienia radia</span><input type="url" id="sRadioUrl" placeholder="np. https://…/stream.mp3 albo lista .m3u / .pls"></label>
+          <label class="field"><span>Nazwa stacji (do wyświetlania)</span><input type="text" id="sRadioName" placeholder="np. Radio Złote Przeboje"></label>
+          <button class="btn small ghost" id="sRadioTest" type="button" style="justify-self:start">▶ Sprawdź (6 s)</button>
+          <p class="hint">Radio gra na żywo, z płynnym wyciszaniem przy filmach i ogłoszeniach. Adres strumienia znajdziesz zwykle na stronie stacji („słuchaj w odtwarzaczu”, „link do strumienia”).</p>
         </div>
         <div id="mFiles" class="field">
           <div class="row">
@@ -862,6 +879,9 @@ body.showing #yt-holder{z-index:99}
         <small class="hint" id="mapInfo"></small>
         <label class="chk"><input type="checkbox" id="sAppFs"> <span>Program zawsze na pełnym ekranie (przełączanie: F11)</span></label>
         <label class="chk"><input type="checkbox" id="sEco"> <span>🍃 Oszczędzanie w pauzie i przerwie — animacje i praca w tle zwalniają (laptop mniej się grzeje i szumi)</span></label>
+        <button class="btn small" id="sStart" style="justify-self:start">🏠 Okno startowe — wybór projektu</button>
+        <button class="btn small" id="sAlbum" style="justify-self:start">📖 Album do wysłania (otwiera się w przeglądarce)</button>
+        <button class="btn small" id="sCast" style="justify-self:start">📺 Ekran bez kabla (Smart TV przez Wi-Fi)</button>
         <button class="btn small" id="sShortcut" style="justify-self:start">🖥 Skrót do tego projektu na pulpicie</button>
         <span class="lbl">Automatyczna kopia ustawień projektu</span>
         <p class="hint">Poprawki godzin, obroty, ulubione, notatki, części — zapisywane co jakiś czas do wybranego folderu (np. OneDrive albo pendrive). Przywracasz przez „Kopia ustawień → Wczytaj kopię”.</p>

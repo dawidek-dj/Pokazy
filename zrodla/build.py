@@ -13,7 +13,7 @@ qr = open(os.path.join(src, 'qr.min.js'), encoding='utf-8').read()
 assert h.count('/*__SCRIPT__*/') == 1 and h.count('/*__QR__*/') == 1, 'brak znaczników w index.html'
 assert '</script' not in app and '</script' not in qr, 'kod zawiera </script>'
 open(os.path.join(out, 'index.html'), 'w', encoding='utf-8').write(h.replace('/*__QR__*/', qr).replace('/*__SCRIPT__*/', app))
-for f in ('pilot.html', 'prosba.html', 'mv.html'):
+for f in ('pilot.html', 'prosba.html', 'mv.html', 'ekran.html'):
     shutil.copy(os.path.join(src, f), out)
 shutil.copytree(os.path.join(src, 'lib'), os.path.join(out, 'lib'), dirs_exist_ok=True)
 if not app_mode:

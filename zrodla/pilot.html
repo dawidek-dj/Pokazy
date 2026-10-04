@@ -41,6 +41,11 @@ button small{font-size:11px;color:var(--muted)}
 button.big{min-height:84px;font-size:30px}
 button.play{background:var(--gold);color:#2A1D22;border-color:var(--gold)}
 button.play small{color:#4A3826}
+body.tablet{max-width:none!important;padding-left:18px;padding-right:18px}
+body.tablet main#ui{grid-template-columns:minmax(320px,1fr) minmax(300px,1.15fr) minmax(320px,1fr);align-items:start;gap:18px!important}
+body.tablet .tcol{display:grid;gap:12px;align-content:start;min-width:0}
+body.tablet #tabTL{max-height:calc(100vh - 160px);overflow:auto;grid-template-columns:repeat(3,1fr);padding:0}
+body.tablet .gbox{margin-bottom:0}
 .rvx{position:fixed;inset:0;z-index:60;background:var(--bg);display:grid;grid-template-rows:auto 1fr auto auto auto auto;gap:8px;padding:max(10px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom))}
 .rv-top{display:flex;gap:8px;align-items:center}.rv-top b{flex:1;font:italic 500 22px/1 var(--serif);color:var(--gold2)}.rv-top select,.rv-top button{min-height:38px;flex:none;font-size:14px}
 .rv-stage{position:relative;min-height:0;display:grid;place-items:center;touch-action:none;overflow:hidden}
@@ -396,8 +401,8 @@ function loadAlThumb(el, tries) {
   img.src = thumbUrl(k) + '&r=' + tries;
 }
 setInterval(() => { if (AL.want.size) { const ks = [...AL.want].slice(0, 20); ks.forEach(k => AL.want.delete(k)); send('thumbs', '', ks.join(',')); } }, 1200);
-async function openAll() {
-  $('#allList').hidden = false; const g = $('#alGrid'); g.innerHTML = '<p class="tip">Wczytuję…</p>';
+async function openAll(target) {
+  const g = target || $('#alGrid'); if (!target) { $('#allList').hidden = false; g.innerHTML = '<p class="tip">Wczytuję…</p>'; }
   let list = [];
   try { const r = await fetchT(thumbUrl('__slides'), {}, 6000); if (r.status === 200) list = await r.json(); } catch { }
   if (!list.length) { g.innerHTML = '<p class="tip">Lista pojawi się za chwilę — spróbuj ponownie za kilka sekund.</p>'; return; }
@@ -417,6 +422,25 @@ async function openAll() {
     if (n.i === cur) curEl = d;
   }
   if (curEl) curEl.scrollIntoView({ block: 'center' });
+}
+// ---- tablet: trzy kolumny (sterowanie · oś pokazu · goście, ogłoszenia, muzyka)
+const TAB = { on: false, idx: -1, at: 0 };
+(() => {
+  if (!matchMedia('(min-width: 880px) and (min-height: 480px)').matches) return;
+  TAB.on = true; document.body.classList.add('tablet');
+  const ui = $('#ui'), annSec = $('#annOn') && $('#annOn').closest('.sec');
+  const cols = [0, 1, 2].map(() => { const d = document.createElement('div'); d.className = 'tcol'; return d; });
+  while (ui.firstChild && ui.firstChild !== annSec) cols[0].append(ui.firstChild);
+  while (ui.firstChild) cols[2].append(ui.firstChild);
+  const gs = $('#gsec'); if (gs) cols[2].prepend(gs);
+  cols[1].innerHTML = '<span class="lbl">Oś pokazu — dotknij, aby podejrzeć</span><div class="algrid" id="tabTL"><p class="tip">Oś pojawi się po uruchomieniu pokazu.</p></div>';
+  ui.append(...cols);
+})();
+function tabletTL(st) {
+  if (!TAB.on || !st || !st.on) return;
+  if (st.idx === TAB.idx && Date.now() - TAB.at < 30000) return;
+  if (Date.now() - TAB.at < 3000) return;
+  TAB.idx = st.idx; TAB.at = Date.now(); openAll($('#tabTL'));
 }
 $('#bAll').onclick = openAll;
 $('#alClose').onclick = () => { $('#allList').hidden = true; };
@@ -592,6 +616,7 @@ function render(d) {
   if (!tsrc && $('#thumb').dataset.k !== s.tkey) { $('#thumb').removeAttribute('src'); $('#thumb').dataset.src = ''; }
   $('#thumb').dataset.k = s.tkey || '';
   renderNext(s.next || []);
+  tabletTL(s);
   $('#pNote').hidden = !s.note; $('#pNote').textContent = s.note ? '📝 ' + s.note : '';
   $('#retInfo').hidden = !s.returnTo; if (s.returnTo) $('#retInfo').textContent = `▶ Pokazane poza kolejnością — potem pokaz wraca do slajdu ${s.returnTo}`;
   $('#bSkipCur').hidden = isCard; $('#bSkipCur').textContent = s.curSkip ? '↩ Pokaż ten slajd ponownie w kolejce' : '⊘ Nie pokazuj tego slajdu ponownie w kolejce';

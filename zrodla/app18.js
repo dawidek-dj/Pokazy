@@ -270,7 +270,7 @@ async function unpackProject() {
   $('#packBtn').onclick = packProject; $('#unpackBtn').onclick = unpackProject;
   applyLook(); updPerfUI(); detectDisplays();
   // pierwsze uruchomienie aplikacji: krótki test wydajności
-  if (NATIVE && !Perf.level) setTimeout(() => { if (!Show.on) perfTest(true); }, 4000);
+  if (NATIVE && !Perf.level) { const tryPerf = () => { if (Show.on) return; if (!$('#modal').hidden) { setTimeout(tryPerf, 3000); return; } perfTest(true); }; setTimeout(tryPerf, 4000); }   // po zamknięciu okna startowego
 })();
 
 /* =========================================================

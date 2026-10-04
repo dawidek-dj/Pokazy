@@ -42,10 +42,11 @@ function httpGetBuf(u, headers) {
 const safeName = s => String(s || '').normalize('NFKC').replace(/[\\/:*?"<>|\x00-\x1f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
 const UP_EXT = /\.(jpe?g|png|heic|heif|webp|gif|mp4|mov|m4v|webm|3gp|mkv)$/i;
 
-function createServer({ webDir, port = 8765, native = null, log = () => { }, tileDir = null, exporter = null, importer = null, drives = () => [], tmpDir = os.tmpdir() }) {
+function createServer({ webDir, port = 8765, native = null, log = () => { }, tileDir = null, exporter = null, importer = null, albumer = null, drives = () => [], tmpDir = os.tmpdir() }) {
   const token = crypto.randomBytes(18).toString('hex');   // klucz tylko dla okna aplikacji (dostęp do plików)
   const roots = new Set();
   const TJ = { state: 'idle', total: 0, done: 0, fail: 0, run: 0 };
+  const tvPin = String(Math.floor(1000 + Math.random() * 9000));   // krótki kod dla telewizora (ekran bez kabla)
   const PK = { state: 'idle', done: 0, total: 0, root: '', err: '' };   // pakowanie projektu                                 // foldery, które użytkownik dodał — tylko z nich wolno czytać
   const ST = { token: '', gtoken: '', gflags: '', state: Buffer.from('{}'), cmds: [], thumb: Buffer.alloc(0), rev: 0, lastSync: 0, seen: new Map(), ids: [], thumbs: new Map(), glast: new Map(),
     uploadDir: '', ulog: new Map(), gallery: [], galleryTitle: '', itoken: '', importDir: '', assetDir: '' };
@@ -106,6 +107,20 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
         for (const f of job.music || []) roots.add(path.dirname(f));
         job.assetDir = ST.assetDir; ST.assetDir = '';
         try { await exporter.start(job); return json(res, { ok: true }); } catch (e) { return json(res, { ok: false, err: e.message }, 409); }
+      }
+      if (p === '/native/highlights') { const r = await native.highlights(fp, +q.get('target') || 45); return json(res, { ok: true, ...r }); }
+      if (p === '/native/album' && req.method === 'POST') {
+        const job = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+        if (!job.dest || !Array.isArray(job.items)) return json(res, { ok: false }, 400);
+        job.items = job.items.filter(x => x && x.path && inRoots(x.path));
+        try { await albumer.start(job); return json(res, { ok: true }); } catch (e) { return json(res, { ok: false, err: e.message }, 409); }
+      }
+      if (p === '/native/albumstatus') return json(res, { ok: true, ...albumer.status() });
+      // ekran bez kabla: lista mediów bieżącego i kolejnych slajdów (telewizor pobiera je przez Wi-Fi)
+      if (p === '/native/castmedia' && req.method === 'POST') {
+        const d = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+        ST.cast = new Map((d.items || []).filter(x => x && x.key && x.path && inRoots(x.path)).map(x => [x.key, x]));
+        return json(res, { ok: true });
       }
       if (p === '/native/strip') { const f = await native.strip(fp); return f ? sendFile(req, res, f, 'image/jpeg') : send(res, 404, 'text/plain', '404'); }
       // mapy do pobrania przed wyjazdem: kafelki zapisywane na dysku (powoli, grzecznie dla OpenStreetMap)
@@ -236,7 +251,30 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
         const qq = q.get('q') || ''; if (!qq) return json(res, { ok: false }, 400);
         try { return send(res, 200, 'text/html; charset=utf-8', await ytGet('https://www.youtube.com/results?search_query=' + encodeURIComponent(qq) + '&sp=EgIQAQ%3D%3D&hl=pl&gl=PL')); } catch { return json(res, { ok: false }, 502); }
       }
-      if (p === '/api/info' && local) return json(res, { ips: lanIps(), port, app: true });
+      if (p === '/api/info' && local) return json(res, { ips: lanIps(), port, app: true, tvPin });
+      if (p === '/api/radio' && local) {
+        let u = q.get('u') || ''; if (!/^https?:\/\//i.test(u)) return json(res, { ok: false }, 400);
+        const open = (url, hops = 0) => new Promise((ok, fail) => {
+          const mod = url.startsWith('https') ? https : http;
+          const r2 = mod.get(url, { headers: { 'User-Agent': 'Pokazy/1.0', 'Icy-MetaData': '0' } }, x => {
+            if (x.statusCode >= 300 && x.statusCode < 400 && x.headers.location && hops < 5) { x.resume(); return open(new URL(x.headers.location, url).toString(), hops + 1).then(ok, fail); }
+            const ct = String(x.headers['content-type'] || '');
+            if (/mpegurl|scpls|x-scpls|audio\/x-mpegurl/i.test(ct) || /\.(m3u|pls)(\?|$)/i.test(url)) {
+              let body = ''; x.on('data', d => { body += d; if (body.length > 65536) x.destroy(); }); x.on('end', () => { const m = body.match(/https?:\/\/[^\s"'<>]+/); m && hops < 5 ? open(m[0], hops + 1).then(ok, fail) : fail(new Error('pusta lista stacji')); });
+              return;
+            }
+            ok(x);
+          });
+          r2.on('error', fail); r2.setTimeout(12000, () => r2.destroy(new Error('timeout')));
+        });
+        try {
+          const x = await open(u);
+          res.writeHead(200, { 'Content-Type': x.headers['content-type'] || 'audio/mpeg', 'Cache-Control': 'no-store' });
+          x.pipe(res); req.on('close', () => x.destroy());
+        } catch (e) { return json(res, { ok: false, err: String(e.message || e) }, 502); }
+        return;
+      }
+      if (p === '/api/tv/pin') { const c = String(q.get('c') || ''); return c === tvPin && ST.token ? json(res, { ok: true, k: ST.token }) : json(res, { ok: false }, 403); }
       if (p === '/api/sync' && local && req.method === 'POST') {
         const data = await readBody(req);
         ST.token = q.get('k') || ''; ST.gtoken = q.get('g') || ''; ST.gflags = q.get('gf') || ''; if (q.get('i')) ST.itoken = q.get('i'); if (data.length && data[0] === 0x7b) ST.state = data; ST.lastSync = now;
@@ -299,6 +337,7 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
       }
       if (p.startsWith('/api/r/')) {
         if (!ST.token || q.get('k') !== ST.token) return json(res, { ok: false }, 403);
+        if (p === '/api/r/media') { const it = ST.cast && ST.cast.get(q.get('key') || ''); if (!it) return send(res, 404, 'text/plain', '404'); if (q.get('v') === 'disp' && native) { const d = await native.cacheFile(it.path, 'disp').catch(() => null); if (d) return sendFile(req, res, d, 'image/jpeg'); } const pv = it.kind === 'video' && native ? await native.preparedPath(it.path, 3840).catch(() => null) : null; return sendFile(req, res, pv || it.path); }
         ST.seen.set(clientIp(req), now);
         if (p === '/api/r/state') return send(res, 200, 'application/json; charset=utf-8', Buffer.concat([Buffer.from(`{"ok":true,"offline":${now - ST.lastSync > 10000},"rev":${ST.rev},"state":`), ST.state, Buffer.from('}')]), head);
         if (p === '/api/r/cmd' && req.method === 'POST') {
@@ -323,7 +362,8 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
     }
     // pliki strony
     let fp = p === '/' ? (local ? '/index.html' : '/prosba.html') : p;
-    if (!local && fp !== '/pilot.html' && fp !== '/prosba.html' && !/^\/lib\/(fonts(\.css|\/[a-z0-9-]+\.woff2)|motywy\.css)$/.test(fp)) return send(res, 404, 'text/plain', '404');
+    if (fp === '/tv' || fp === '/tv/') fp = '/ekran.html';
+    if (!local && fp !== '/pilot.html' && fp !== '/prosba.html' && fp !== '/ekran.html' && !/^\/lib\/(fonts(\.css|\/[a-z0-9-]+\.woff2)|motywy\.css)$/.test(fp)) return send(res, 404, 'text/plain', '404');
     const full = path.resolve(webDir, '.' + fp);
     if (!full.startsWith(path.resolve(webDir) + path.sep)) return send(res, 404, 'text/plain', '404');
     return sendFile(req, res, full);

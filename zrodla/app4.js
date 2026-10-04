@@ -451,6 +451,7 @@ const Remote = {
       favMode, favN: favCount(), ann: Ann.text, annBrk: Ann.brk, locked: Lock.on,
       msrc: S.musicSource, yt: Music.ytInfo(), queue: Music.queue.map(q => q.title + (q.from ? ` — prośba: ${q.from}` : '')), inQueue: !!YTP.inQueue,
       credits: slides.some(x => x.type === 'credits'), lockPinSet: !!S.lockPin, alerts: alertList(),
+      cast: castState(),
       note: Show.on && slides[Show.idx] && slides[Show.idx].items ? (O[slides[Show.idx].items[0].key] || {}).note || '' : '',
       eco: !!(window.Eco && Eco.on),
       remain: (() => { const r = remainInfo(); return r ? { txt: remainText(r), nom: Math.round(r.nominal / 1000), pace: r.pace ? Math.round(r.pace / 1000) : null, endAt: fmtHM(r.endAt), endAtPace: r.endAtPace ? fmtHM(r.endAtPace) : '', loops: r.loops, atEnd: r.atEnd, left: r.left, photos: r.photos, videos: r.videos } : null; })(),
