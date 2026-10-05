@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('native', {
   appFsPref: on => ipcRenderer.send('native:appFsPref', !!on),
   winctl: a => ipcRenderer.send('native:winctl', a),
   tvMinimize: () => ipcRenderer.send('native:tvMinimize'),
+  hotspot: a => ipcRenderer.invoke('native:hotspot', a),
+  openHotspotSettings: () => ipcRenderer.send('native:openHotspotSettings'),
   titlebar: (color, symbol) => ipcRenderer.send('native:titlebar', { color, symbol }),
   isFs: () => ipcRenderer.invoke('native:isFs'),
   onFs: cb => ipcRenderer.on('native:fs', (e, on) => cb(on)),

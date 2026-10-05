@@ -292,6 +292,35 @@ body.console-on.ytvis .cbottom{padding-bottom:78px}
 .rehearsal video{width:320px;height:180px;background:#000;border-radius:8px}
 .timerow{display:flex;gap:6px;flex-wrap:wrap}.timerow input{min-width:0}
 .nudge{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+/* kadrowanie, serie, mozaika */
+.mbox.wide{width:min(1180px,96vw);max-width:96vw}
+.edwrap{display:grid;place-items:center;background:#000;border-radius:12px;padding:10px}
+.edframe{position:relative;max-width:100%;max-height:62vh;height:62vh;overflow:hidden;touch-action:none}
+.edframe img{width:100%;height:100%;display:block;transform-origin:50% 50%}
+.edbox{position:absolute;box-shadow:0 0 0 9999px rgba(0,0,0,.58);outline:2px solid var(--gold2);cursor:move}
+.edbox i{position:absolute;background:rgba(255,255,255,.35)}.edbox .g1,.edbox .g2{top:0;bottom:0;width:1px}.edbox .g1{left:33.33%}.edbox .g2{left:66.66%}.edbox .g3,.edbox .g4{left:0;right:0;height:1px}.edbox .g3{top:33.33%}.edbox .g4{top:66.66%}
+.edbox b{position:absolute;width:22px;height:22px;border:3px solid var(--gold2);box-sizing:border-box}.edbox b[data-h=nw]{left:0;top:0;border-right:0;border-bottom:0;cursor:nwse-resize}.edbox b[data-h=ne]{right:0;top:0;border-left:0;border-bottom:0;cursor:nesw-resize}.edbox b[data-h=sw]{left:0;bottom:0;border-right:0;border-top:0;cursor:nesw-resize}.edbox b[data-h=se]{right:0;bottom:0;border-left:0;border-top:0;cursor:nwse-resize}
+.serlist{display:grid;gap:8px;max-height:60vh;overflow:auto}
+.serrow{display:flex;gap:12px;align-items:center;padding:8px 12px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;font:inherit;text-align:left}
+.serrow:hover{border-color:var(--gold)}.serrow .strip{display:flex;gap:3px;flex:none}.serrow .strip img{width:58px;height:58px;object-fit:cover;border-radius:6px}
+.serrow .meta{flex:1;display:grid}.serrow .meta small{color:var(--muted)}.serrow .go{color:var(--gold)}
+.sercmp{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;max-height:62vh;overflow:auto;padding:2px}
+.sccard{position:relative;border-radius:12px;overflow:hidden;background:#000;cursor:pointer;outline:3px solid transparent;aspect-ratio:4/3}
+.sccard img{width:100%;height:100%;object-fit:contain;opacity:.55;transition:opacity .2s}.sccard.on{outline-color:var(--gold)}.sccard.on img{opacity:1}
+.sccard .sct{position:absolute;left:0;right:0;bottom:0;padding:6px 10px;background:linear-gradient(transparent,rgba(0,0,0,.8));display:grid;font-size:13px}.sccard .sct small{color:#ccc}
+.sccard .zbtn{position:absolute;top:8px;right:8px;width:38px;height:38px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:18px;cursor:zoom-in}
+.sccard .chk{position:absolute;top:8px;left:8px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.5);color:transparent;font-weight:700}.sccard.on .chk{background:var(--gold);color:#2A1D22}
+.zv{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.96);display:grid;grid-template-rows:auto 1fr auto;color:#eee}
+.zv-top,.zv-nav{display:flex;gap:10px;align-items:center;padding:10px 16px}.zv-top span{flex:1}.zv-nav{justify-content:center}.zv-nav small{color:#aaa}
+.zv button{font:inherit;color:#fff;background:#2a2230;border:1px solid #555;border-radius:999px;padding:7px 14px;cursor:pointer}
+.zv-st{position:relative;overflow:hidden;display:grid;place-items:center;cursor:grab;touch-action:none}.zv-st img{max-width:100%;max-height:100%;transform-origin:50% 50%;user-select:none;-webkit-user-drag:none}
+.card.mosaic{position:absolute;inset:0;padding:0;display:block;background:#000}
+.card.mosaic .mos{position:absolute;inset:0;overflow:hidden}
+.card.mosaic .mos img{width:100%;height:100%;object-fit:contain;transform-origin:50% 42%}
+.layer.on .card.mosaic .mos img{animation:mosZoom 14s cubic-bezier(.35,.05,.2,1) both}
+@keyframes mosZoom{from{transform:scale(8)}to{transform:scale(1)}}
+.card.mosaic .mos-t{position:absolute;left:0;right:0;bottom:6vh;margin:0;text-align:center;font:italic 500 clamp(28px,4vw,76px)/1.1 var(--serif);color:var(--gold2);text-shadow:0 3px 18px rgba(0,0,0,.9)}
+.layer.on .card.mosaic .mos-t{animation:mosT 2.5s 11s both}@keyframes mosT{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 /* filtr źródeł i przesuwanie godzin */
 #srcFilter{font:inherit;font-size:13px;padding:7px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--text);max-width:220px}
 #srcFilter.on{border-color:var(--gold);color:var(--gold2)}
@@ -768,6 +797,7 @@ body.showing #yt-holder{z-index:99}
         <label class="chk"><input type="checkbox" id="sThin"> <span>Przerzedzaj serie prawie identycznych ujęć (zostają 1–2 najlepsze, reszta schowana — nic nie jest usuwane)</span></label>
         <p class="hint" id="thinInfo"></p>
         <label class="chk"><input type="checkbox" id="sDayWeather"> <span>Pogoda na planszy dnia („☀ 31°C”, pobierana raz dla daty i miejsca zdjęć)</span></label>
+        <label class="chk app-only-f"><input type="checkbox" id="sMosaic"> <span>🧩 Mozaika na zakończenie — duży obraz ułożony z Waszych zdjęć (obraz wybierasz w szczegółach zdjęcia; domyślnie pierwsze ulubione)</span></label>
         <label class="chk"><input type="checkbox" id="sTripStats"> <span>Statystyki na koniec (kilometry z GPS, miejscowości, dni, zdjęcia, filmy)</span></label>
         <label class="field"><span>Dodatkowe liczby do statystyk — jedna w linii</span><textarea id="sTripExtra" rows="3" placeholder="Kroki: 84 312&#10;Km samochodem: 1 250&#10;Lody: 23"></textarea></label>
         <div class="field"><span>Dźwięk przy ogłoszeniach (muzyka na chwilę cichnie)</span><span class="row"><select id="sAnnSound" style="flex:1"><option value="auto">automatycznie (gong — przerwa, fanfara — tort i taniec, dzwonek — reszta)</option><option value="gong">zawsze gong</option><option value="dzwonek">zawsze dzwonek</option><option value="fanfara">zawsze fanfara</option><option value="cymbalki">zawsze cymbałki</option><option value="none">bez dźwięku</option></select><button class="btn small ghost" id="sAnnTest" type="button">▶ Posłuchaj</button></span></div>
@@ -831,6 +861,7 @@ body.showing #yt-holder{z-index:99}
             <option value="mute">muzyka gra dalej, film bez dźwięku</option>
           </select>
         </label>
+        <label class="chk app-only-f"><input type="checkbox" id="sLoudNorm"> <span>Wyrównuj głośność filmów (ciche nagrania głośniej, głośne ciszej — mierzone raz, bez przesterowania)</span></label>
         <label class="chk"><input type="checkbox" id="sMusicOnPause"> <span>Gdy zatrzymasz film — muzyka powoli wraca (stopniowo głośniej, ok. 5 s); po wznowieniu filmu znów cichnie</span></label>
         <label class="field"><span>Głośność muzyki</span><input type="range" id="sVol" min="0" max="100"></label>
         <label class="chk"><input type="checkbox" id="sShuffle"> <span>Losowa kolejność utworów</span></label>
@@ -889,6 +920,9 @@ body.showing #yt-holder{z-index:99}
         <small class="hint" id="mapInfo"></small>
         <label class="chk"><input type="checkbox" id="sAppFs"> <span>Program zawsze na pełnym ekranie (przełączanie: F11)</span></label>
         <label class="chk"><input type="checkbox" id="sEco"> <span>🍃 Oszczędzanie w pauzie i przerwie — animacje i praca w tle zwalniają (laptop mniej się grzeje i szumi)</span></label>
+        <button class="btn small" id="sSnaps" style="justify-self:start">🕘 Punkty przywracania</button>
+        <button class="btn small" id="sOrderCopy" style="justify-self:start">📁 Kopia oryginałów w kolejności pokazu</button>
+        <button class="btn small" id="sHotspot" style="justify-self:start">📶 Własna sieć Wi-Fi z laptopa</button>
         <button class="btn small" id="sStart" style="justify-self:start">🏠 Okno startowe — wybór projektu</button>
         <button class="btn small" id="sAlbum" style="justify-self:start">📖 Album do wysłania (otwiera się w przeglądarce)</button>
         <button class="btn small" id="sCast" style="justify-self:start">📺 Ekran bez kabla (Smart TV przez Wi-Fi)</button>
@@ -962,6 +996,7 @@ body.showing #yt-holder{z-index:99}
       <button class="btn small ghost" id="redoBtn" hidden>↷ Ponów</button>
       <button class="btn small" id="reviewBtn" title="Przeglądaj pliki z tego widoku na całym ekranie: strzałki, U ulubione, H ukryj, R obróć">▶ Szybki przegląd</button>
       <div class="progress" id="progress" hidden><span id="progTxt"></span><span class="bar"><i id="progBar"></i></span></div>
+      <button class="chip" id="seriesBtn" hidden title="Porównaj serie podobnych ujęć i zostaw najlepsze">▦ Serie</button>
       <select id="srcFilter" aria-label="Źródło plików" title="Pokaż pliki z jednego telefonu, WhatsAppa, Messengera…"><option value="">Wszystkie źródła</option></select>
       <input type="text" id="search" placeholder="Szukaj nazwy pliku" aria-label="Szukaj nazwy pliku">
       <input type="range" id="tileSize" min="100" max="260" value="150" aria-label="Wielkość miniatur" style="width:90px">

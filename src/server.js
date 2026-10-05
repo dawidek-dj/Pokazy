@@ -42,7 +42,7 @@ function httpGetBuf(u, headers) {
 const safeName = s => String(s || '').normalize('NFKC').replace(/[\\/:*?"<>|\x00-\x1f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
 const UP_EXT = /\.(jpe?g|png|heic|heif|webp|gif|mp4|mov|m4v|webm|3gp|mkv)$/i;
 
-function createServer({ webDir, port = 8765, native = null, log = () => { }, tileDir = null, exporter = null, importer = null, albumer = null, drives = () => [], tmpDir = os.tmpdir() }) {
+function createServer({ webDir, port = 8765, native = null, log = () => { }, tileDir = null, exporter = null, importer = null, albumer = null, copier = null, buildMosaic = null, drives = () => [], tmpDir = os.tmpdir() }) {
   const token = crypto.randomBytes(18).toString('hex');   // klucz tylko dla okna aplikacji (dostęp do plików)
   const roots = new Set();
   const TJ = { state: 'idle', total: 0, done: 0, fail: 0, run: 0 };
@@ -107,6 +107,29 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
         for (const f of job.music || []) roots.add(path.dirname(f));
         job.assetDir = ST.assetDir; ST.assetDir = '';
         try { await exporter.start(job); return json(res, { ok: true }); } catch (e) { return json(res, { ok: false, err: e.message }, 409); }
+      }
+      if (p === '/native/loudness') return json(res, { ok: true, ...(await native.loudness(fp)) });
+      if (p === '/native/ordercopy' && req.method === 'POST') {
+        const job = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+        if (!job.dest || !Array.isArray(job.files)) return json(res, { ok: false }, 400);
+        job.files = job.files.filter(f => f && f.src && inRoots(f.src)).map(f => ({ ...f, name: String(f.name).replace(/[\\/:*?"<>|]/g, '_'), dir: f.dir ? String(f.dir).replace(/[\\/:*?"<>|]/g, '_') : '' }));
+        try { await copier.start(job); return json(res, { ok: true }); } catch (e) { return json(res, { ok: false, err: e.message }, 409); }
+      }
+      if (p === '/native/ordercopystatus') return json(res, { ok: true, ...copier.status() });
+      if (p === '/native/mosaic' && req.method === 'POST') {
+        const d = JSON.parse((await readBody(req)).toString('utf8') || '{}');
+        if (!d.target || !inRoots(d.target)) return json(res, { ok: false }, 400);
+        const tiles = (d.tiles || []).filter(inRoots), id = crypto.createHash('sha1').update(d.target + '|' + tiles.length + '|' + tiles.slice(0, 50).join('|')).digest('hex').slice(0, 16);
+        const out = path.join(tmpDir, 'mozaika', id + '.jpg');
+        if (!fs.existsSync(out)) { fs.mkdirSync(path.dirname(out), { recursive: true }); try { await buildMosaic({ native, target: d.target, tiles, out }); } catch (e) { return json(res, { ok: false, err: e.message }, 500); } }
+        return json(res, { ok: true, id });
+      }
+      if (p === '/native/mosaicfile') { const f = path.join(tmpDir, 'mozaika', String(q.get('id') || '').replace(/[^\w]/g, '') + '.jpg'); return fs.existsSync(f) ? sendFile(req, res, f, 'image/jpeg') : send(res, 404, 'text/plain', '404'); }
+      // karta pamięci: ile nowych plików (których nie ma w projekcie)
+      if (p === '/native/dcimnew' && req.method === 'POST') {
+        const d = JSON.parse((await readBody(req)).toString('utf8') || '{}'), known = new Set(d.known || []);
+        let n = 0; const walk = async dir => { let es; try { es = await fs.promises.readdir(dir, { withFileTypes: true }); } catch { return; } for (const e of es) { const f = path.join(dir, e.name); if (e.isDirectory()) await walk(f); else if (/\.(jpe?g|png|heic|heif|mp4|mov|m4v|3gp|mts)$/i.test(e.name)) { try { const st = await fs.promises.stat(f); if (!known.has(e.name.toLowerCase() + '|' + st.size)) n++; } catch { } } } };
+        await walk(d.src || ''); return json(res, { ok: true, n });
       }
       if (p === '/native/highlights') { const r = await native.highlights(fp, +q.get('target') || 45); return json(res, { ok: true, ...r }); }
       if (p === '/native/album' && req.method === 'POST') {

@@ -33,7 +33,7 @@ function routeAudio(v, it) {
 function applyVideoVolume(v, it) {
   if (!v) return;
   const g = Math.max(0, S.videoVol / 100 * volOf(it));
-  if (v._g) { v.volume = 1; v._g.gain.setTargetAtTime(g, AudioFx.ctx.currentTime, 0.04); }
+  if (v._g) { v.volume = 1; v._g.gain.setTargetAtTime(g * (typeof loudGainLin === 'function' ? loudGainLin(it) : 1), AudioFx.ctx.currentTime, 0.04); }
   else v.volume = Math.min(1, g);
 }
 function playVideo(v) {

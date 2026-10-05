@@ -22,7 +22,7 @@ if (!app.requestSingleInstanceLock()) { app.quit(); return; }
 
 const { createNative } = require('./native');
 const { createServer } = require('./server');
-const { createExporter, createImporter, createAlbumer, drives } = require('./export');
+const { createExporter, createImporter, createAlbumer, createCopier, buildMosaic, drives } = require('./export');
 const updater = require('./update');
 let mainWin = null, server = null, native = null, power = null, port = 8765;
 const projArg = argv => { const a = (argv || []).find(x => /^--projekt=/.test(x)); return a ? a.slice(10).replace(/[^\w-]/g, '') : ''; };
@@ -38,7 +38,7 @@ async function startServer() {
   native = createNative({ cacheDir: path.join(dataDir, 'cache'), ffmpegPath: ffmpegPath(), log });
   for (const p of [8765, 8766, 8767, 8768]) {
     server = createServer({ webDir: path.join(__dirname, '..', 'web'), port: p, native, log, tileDir: path.join(dataDir, 'cache', 'mapa'),
-      exporter: createExporter({ ffmpegPath: ffmpegPath(), cacheDir: path.join(dataDir, 'cache'), native, log }), importer: createImporter({ log }), albumer: createAlbumer({ native, log }), drives, tmpDir: path.join(dataDir, 'cache') });
+      exporter: createExporter({ ffmpegPath: ffmpegPath(), cacheDir: path.join(dataDir, 'cache'), native, log }), importer: createImporter({ log }), albumer: createAlbumer({ native, log }), copier: createCopier({ log }), buildMosaic, drives, tmpDir: path.join(dataDir, 'cache') });
     try { await server.listen(); port = p; if (p !== 8765) log('port 8765 zajęty, używam', p); return; } catch (e) { log('port', p, e.message); }
   }
   throw new Error('Nie udało się uruchomić serwera (porty 8765–8768 zajęte).');
@@ -138,6 +138,34 @@ ipcMain.on('native:power', (e, on) => {
 });
 ipcMain.on('native:updateInstall', () => updater.install());
 // pełny ekran na poziomie Windows (zasłania też pasek zadań); w pokazie okno trzymane na wierzchu
+// własna sieć Wi-Fi z laptopa (Mobilny hotspot Windows) — przez PowerShell i API Windows
+ipcMain.handle('native:hotspot', async (e, action) => {
+  if (process.platform !== 'win32') return { ok: false, err: 'Hotspot działa w Windows.' };
+  const ps = String.raw`$ErrorActionPreference='Stop'
+try {
+Add-Type -AssemblyName System.Runtime.WindowsRuntime
+$asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation${'`'}1' })[0]
+function Await($op, $type) { $t = $asTask.MakeGenericMethod($type).Invoke($null, @($op)); $t.Wait(-1) | Out-Null; $t.Result }
+$null = [Windows.Networking.Connectivity.NetworkInformation, Windows.Networking.Connectivity, ContentType=WindowsRuntime]
+$null = [Windows.Networking.NetworkOperators.NetworkOperatorTetheringManager, Windows.Networking.NetworkOperators, ContentType=WindowsRuntime]
+$prof = [Windows.Networking.Connectivity.NetworkInformation]::GetInternetConnectionProfile()
+if (-not $prof) { $prof = [Windows.Networking.Connectivity.NetworkInformation]::GetConnectionProfiles() | Select-Object -First 1 }
+if (-not $prof) { throw 'Brak połączenia sieciowego, od którego Windows może uruchomić hotspot' }
+$tm = [Windows.Networking.NetworkOperators.NetworkOperatorTetheringManager]::CreateFromConnectionProfile($prof)
+$st = ''
+if ('ACTION' -eq 'start' -and $tm.TetheringOperationalState -ne 'On') { $r = Await ($tm.StartTetheringAsync()) ([Windows.Networking.NetworkOperators.NetworkOperatorTetheringOperationResult]); $st = [string]$r.Status }
+if ('ACTION' -eq 'stop' -and $tm.TetheringOperationalState -eq 'On') { $r = Await ($tm.StopTetheringAsync()) ([Windows.Networking.NetworkOperators.NetworkOperatorTetheringOperationResult]); $st = [string]$r.Status }
+$cfg = $tm.GetCurrentAccessPointConfiguration()
+[pscustomobject]@{ ok = $true; ssid = $cfg.Ssid; pass = $cfg.Passphrase; state = [string]$tm.TetheringOperationalState; status = $st } | ConvertTo-Json -Compress
+} catch { [pscustomobject]@{ ok = $false; err = $_.Exception.Message } | ConvertTo-Json -Compress }`.replace(/ACTION/g, action === 'stop' ? 'stop' : action === 'start' ? 'start' : 'status');
+  return new Promise(res => {
+    const enc = Buffer.from(ps, 'utf16le').toString('base64');
+    require('child_process').execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', enc], { windowsHide: true, timeout: 30000 }, (err, out) => {
+      try { res(JSON.parse(String(out).trim().split(/\r?\n/).pop())); } catch { res({ ok: false, err: err ? err.message : 'Nie udało się uruchomić hotspotu' }); }
+    });
+  });
+});
+ipcMain.on('native:openHotspotSettings', () => { try { require('electron').shell.openExternal('ms-settings:network-mobilehotspot'); } catch { } });
 ipcMain.on('native:tvMinimize', () => { for (const w of BrowserWindow.getAllWindows()) if (w !== mainWin && /telewizor/i.test(w.getTitle())) { try { w.setFullScreen(false); w.minimize(); } catch { } } });
 ipcMain.on('native:winctl', (e, a) => {
   const w = BrowserWindow.fromWebContents(e.sender); if (!w) return;

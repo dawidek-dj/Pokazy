@@ -53,20 +53,3 @@ $('#timeline').addEventListener('click', e => {
 }, true);
 document.addEventListener('keydown', e => { if (PP.pick && e.key === 'Escape') { e.stopPropagation(); stopPairPick(); } }, true);
 
-// start
-Hist.last = JSON.stringify(O);
-bindSettings();
-bindExtraSettings();
-renderSidebar();
-renderTimeline();
-renderHeader();
-renderReopen();
-updUndoUI();
-updMVUI();
-updGReqUI();
-updProjUI();
-updGPUI();
-for (const P of Picker.inst) Picker.render(P);
-if (location.protocol === 'file:') $('#fileWarn').hidden = false;
-Remote.init();
-if (!NATIVE) offerRecovery();

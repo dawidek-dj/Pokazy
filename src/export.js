@@ -1,4 +1,22 @@
 // Eksport pokazu do filmu MP4 (ffmpeg) i import z karty pamięci / pendrive'a.
+// Kadrowanie i prostowanie (tak samo jak w pokazie): obrót o kąt z dopasowaniem bez pustych rogów, potem wycięcie kadru.
+async function applyEdit(buf, ed) {
+  if (!ed || (!ed.tilt && !ed.crop)) return buf;
+  const sharp = require('sharp');
+  let img = sharp(buf), meta = await img.metadata(), W = meta.width, H = meta.height;
+  if (ed.tilt) {
+    const t = Math.abs(ed.tilt) * Math.PI / 180, z = Math.cos(t) + Math.max(W / H, H / W) * Math.sin(t);
+    const r = await sharp(buf).rotate(ed.tilt, { background: '#000' }).toBuffer({ resolveWithObject: true });
+    const w = Math.round(W / z), h = Math.round(H / z);
+    buf = await sharp(r.data).extract({ left: Math.round((r.info.width - w) / 2), top: Math.round((r.info.height - h) / 2), width: w, height: h }).toBuffer();
+    W = w; H = h;
+  }
+  if (ed.crop) {
+    const c = ed.crop, left = Math.max(0, Math.round(c.x * W)), top = Math.max(0, Math.round(c.y * H));
+    buf = await sharp(buf).extract({ left, top, width: Math.max(8, Math.min(W - left, Math.round(c.w * W))), height: Math.max(8, Math.min(H - top, Math.round(c.h * H))) }).toBuffer();
+  }
+  return buf;
+}
 // Wszystko działa w procesie aplikacji; okno pokazu tylko zleca pracę i pokazuje postęp.
 const fs = require('fs'), fsp = fs.promises, path = require('path'), os = require('os');
 const { spawn } = require('child_process');
@@ -23,13 +41,15 @@ function createExporter({ ffmpegPath, cacheDir, native, log = () => { } }) {
   const aenc = ['-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-ac', '2'];
 
   // jedno zdjęcie (albo para) złożone jak w pokazie: rozmyte tło + zdjęcie w całości
-  async function frame(paths, rots, scale) {
+  async function frame(paths, rots, scale, edits) {
     const fw = Math.round(W * scale), fh = Math.round(H * scale);
     const load = async (p, rot) => {
       let src = p;
       if (native) { try { await native.analyze(p); const d = await native.cacheFile(p, 'disp'); if (d) src = d; } catch { } }
-      return sharp(src, { failOn: 'none', limitInputPixels: false }).rotate().rotate(rot || 0).toBuffer();
+      const eb = await applyEdit(await sharp(src, { failOn: 'none', limitInputPixels: false }).rotate().toBuffer(), (edits || [])[bufsN++]);
+      return sharp(eb).rotate(rot || 0).toBuffer();
     };
+    let bufsN = 0;
     const bufs = [];
     for (let i = 0; i < paths.length; i++) bufs.push(await load(paths[i], rots[i]));
     const bg = await sharp(bufs[0]).resize(Math.round(fw / 8), Math.round(fh / 8), { fit: 'cover' }).blur(6).modulate({ brightness: 0.55 }).resize(fw, fh).toBuffer();
@@ -72,7 +92,7 @@ function createExporter({ ffmpegPath, cacheDir, native, log = () => { } }) {
     if (s.type === 'image' || s.type === 'pair') {
       const paths = s.type === 'pair' ? s.paths : [s.path], rots = s.type === 'pair' ? (s.rots || []) : [s.rot || 0];
       const d = Math.max(2, +s.dur || 6), scale = J.kenBurns ? 2 : 1;
-      const jpg = path.join(dir, `f${i}.jpg`); await fsp.writeFile(jpg, await frame(paths, rots, scale));
+      const jpg = path.join(dir, `f${i}.jpg`); await fsp.writeFile(jpg, await frame(paths, rots, scale, s.type === 'pair' ? s.edits : [s.edit]));
       const frames = Math.round(d * FPS);
       const vf = J.kenBurns
         ? `zoompan=z='1+0.08*on/${frames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${FPS},${fade(d)},format=yuv420p`
@@ -85,7 +105,7 @@ function createExporter({ ffmpegPath, cacheDir, native, log = () => { } }) {
       const vf = `scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:black,fps=${FPS},${fade(dur)},format=yuv420p`;
       const args = [...(s.ss ? ['-ss', String(s.ss)] : []), '-t', dur.toFixed(2), '-i', s.path];
       let af;
-      if (pr.audio) af = `[0:a]aresample=48000,volume=${(s.vol || 1).toFixed(2)},afade=t=in:st=0:d=0.2,afade=t=out:st=${Math.max(0, dur - 0.4).toFixed(2)}:d=0.4[ao]`;
+      if (pr.audio) af = `[0:a]aresample=48000,volume=${(s.vol || 1).toFixed(2)}${s.gain ? `,volume=${s.gain.toFixed(1)}dB,alimiter=limit=0.95` : ''},afade=t=in:st=0:d=0.2,afade=t=out:st=${Math.max(0, dur - 0.4).toFixed(2)}:d=0.4[ao]`;
       else { args.push('-f', 'lavfi', '-t', dur.toFixed(2), '-i', 'anullsrc=r=48000:cl=stereo'); af = '[1:a]anull[ao]'; }
       return run([...args, '-filter_complex', `[0:v]${vf}[vo];${af}`, '-map', '[vo]', '-map', '[ao]', '-t', dur.toFixed(2), ...venc(), ...aenc, out]).then(r => ({ r, out }));
     }
@@ -204,7 +224,8 @@ function createAlbumer({ native, log = () => { } }) {
             const th = native && await native.cacheFile(it.path, 'thumb').catch(() => null);
             if (it.kind === 'image') {
               let src = it.path; const d = native && await native.cacheFile(it.path, 'disp').catch(() => null); if (d) src = d;
-              await sharp(src, { failOn: 'none', limitInputPixels: false }).rotate().rotate(it.rot || 0).resize(1920, 1920, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 86 }).toFile(path.join(root, 'zdjecia', n + '.jpg'));
+              const eb = await sharp(await applyEdit(await sharp(src, { failOn: 'none', limitInputPixels: false }).rotate().toBuffer(), it.edit)).rotate(it.rot || 0).toBuffer();
+              await sharp(eb).resize(1920, 1920, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 86 }).toFile(path.join(root, 'zdjecia', n + '.jpg'));
               await sharp(th || src, { failOn: 'none' }).rotate(it.rot || 0).resize(420, 420, { fit: 'inside' }).jpeg({ quality: 76 }).toFile(path.join(root, 'miniatury', n + '.jpg'));
               list.push({ k: 'i', f: `zdjecia/${n}.jpg`, m: `miniatury/${n}.jpg`, p: it.part || '', t: it.time || '', c: it.cap || '', o: it.name });
             } else {
@@ -224,3 +245,57 @@ function createAlbumer({ native, log = () => { } }) {
   return { start, status: () => ({ ...J }) };
 }
 module.exports.createAlbumer = createAlbumer;
+
+/* ---- kopia oryginałów w kolejności pokazu (bez zmiany jakości — zwykłe kopiowanie plików) ---- */
+function createCopier({ log = () => { } }) {
+  const J = { state: 'idle' };
+  async function start(job) {
+    if (J.state === 'running') throw new Error('Kopiowanie już trwa.');
+    Object.assign(J, { state: 'running', done: 0, total: job.files.length, root: job.dest, err: '', bytes: 0 });
+    (async () => {
+      try {
+        for (const f of job.files) {
+          const target = path.join(job.dest, f.dir || '', f.name);
+          await fsp.mkdir(path.dirname(target), { recursive: true });
+          await fsp.copyFile(f.src, target);
+          if (f.mtime) { const d = new Date(f.mtime); await fsp.utimes(target, d, d).catch(() => { }); }
+          try { J.bytes += (await fsp.stat(target)).size; } catch { }
+          J.done++;
+        }
+        J.state = 'done';
+      } catch (e) { J.state = 'error'; J.err = String(e.message || e); log('kopia w kolejności', J.err); }
+    })();
+  }
+  return { start, status: () => ({ ...J }) };
+}
+
+/* ---- mozaika: duży obraz ułożony z miniatur zdjęć z wydarzenia ---- */
+async function buildMosaic({ native, target, tiles, out, cols = 64, rows = 36, cell = 30 }) {
+  const sharp = require('sharp');
+  const W = cols * cell, H = rows * cell;
+  const tbuf = async p => { try { const t = native && await native.cacheFile(p, 'thumb'); return await sharp(t || p, { failOn: 'none' }).rotate().resize(cell, cell, { fit: 'cover' }).removeAlpha().raw().toBuffer(); } catch { return null; } };
+  const pool = [];
+  for (const p of tiles.slice(0, 900)) {
+    const b = await tbuf(p); if (!b) continue;
+    let r = 0, g = 0, bl = 0; for (let i = 0; i < b.length; i += 3) { r += b[i]; g += b[i + 1]; bl += b[i + 2]; }
+    const n = b.length / 3; pool.push({ b, c: [r / n, g / n, bl / n], used: 0 });
+  }
+  if (pool.length < 8) throw new Error('Za mało zdjęć do mozaiki.');
+  const tgt = await sharp(target, { failOn: 'none' }).rotate().resize(cols, rows, { fit: 'cover' }).removeAlpha().raw().toBuffer();
+  const canvas = Buffer.alloc(W * H * 3);
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+    const o = (y * cols + x) * 3, c = [tgt[o], tgt[o + 1], tgt[o + 2]];
+    let best = null, bd = Infinity;
+    for (const t of pool) { const d = (t.c[0] - c[0]) ** 2 + (t.c[1] - c[1]) ** 2 + (t.c[2] - c[2]) ** 2 + t.used * 900; if (d < bd) { bd = d; best = t; } }
+    best.used++;
+    // kafelek lekko zabarwiony w stronę koloru celu — obraz jest czytelny z daleka
+    for (let ty = 0; ty < cell; ty++) for (let tx = 0; tx < cell; tx++) {
+      const si = (ty * cell + tx) * 3, di = ((y * cell + ty) * W + x * cell + tx) * 3;
+      for (let k = 0; k < 3; k++) canvas[di + k] = Math.round(best.b[si + k] * 0.62 + c[k] * 0.38);
+    }
+  }
+  await sharp(canvas, { raw: { width: W, height: H, channels: 3 } }).jpeg({ quality: 88 }).toFile(out);
+  return out;
+}
+module.exports.createCopier = createCopier;
+module.exports.buildMosaic = buildMosaic;

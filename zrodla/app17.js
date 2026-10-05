@@ -271,8 +271,9 @@ function openExport() {
       if (s.items) {
         const its = s.items.filter(it => it.file && it.file.native && !(O[it.key] || {}).priv); if (!its.length) continue;   // prywatne nie trafiają do filmu
         const it = its[0], o = O[it.key] || {};
-        if (it.kind === 'video') { if (vmax >= 0) { if (o.clips && o.clips.length) for (const c of o.clips) segs.push({ type: 'video', path: it.file.fullPath, ss: c[0], max: c[1] - c[0], vol: (o.vol || 100) / 100 }); else segs.push({ type: 'video', path: it.file.fullPath, max: vmax, vol: (o.vol || 100) / 100 }); } continue; }
-        const seg = its.length > 1 ? { type: 'pair', paths: its.map(x => x.file.fullPath), rots: its.map(x => (O[x.key] || {}).rot || 0), dur: S.photoSec } : { type: 'image', path: it.file.fullPath, rot: o.rot || 0, dur: S.photoSec };
+        if (it.kind === 'video') { if (vmax >= 0) { if (o.clips && o.clips.length) for (const c of o.clips) segs.push({ type: 'video', path: it.file.fullPath, ss: c[0], max: c[1] - c[0], vol: (o.vol || 100) / 100, gain: loudGainDb(it) }); else segs.push({ type: 'video', path: it.file.fullPath, max: vmax, vol: (o.vol || 100) / 100, gain: loudGainDb(it) }); } continue; }
+        const edOf = x => { const q = O[x.key] || {}; return q.crop || q.tilt ? { crop: q.crop, tilt: q.tilt } : null; };
+        const seg = its.length > 1 ? { type: 'pair', paths: its.map(x => x.file.fullPath), rots: its.map(x => (O[x.key] || {}).rot || 0), edits: its.map(edOf), dur: S.photoSec } : { type: 'image', path: it.file.fullPath, rot: o.rot || 0, edit: edOf(it), dur: S.photoSec };
         if (o.voice && its.length === 1) { const vb = await idb.get('disp', voiceKey(it.key)).catch(() => null); if (vb) { seg.voice = await asset(vb, 'webm'); seg.dur = Math.max(seg.dur, o.voice + 1.8); } }
         segs.push(seg);
       } else {

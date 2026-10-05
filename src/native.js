@@ -265,6 +265,17 @@ function createNative({ cacheDir, ffmpegPath, log = () => { } }) {
     const exifr = require('exifr');
     return (await exifr.parse(b, { pick, reviveValues: false, translateValues: false, mergeOutput: true, tiff: true, exif: true }).catch(() => null)) || {};
   }
+  async function loudness(p) {
+    const st = await fsp.stat(p), k = keyOf(p, st), f = cp('loud', k, '.json');
+    try { return JSON.parse(await fsp.readFile(f, 'utf8')); } catch { }
+    const pr = await probe(p); let r = { lufs: null, audio: !!pr.audio };
+    if (pr.audio) {
+      const x = await run(['-hide_banner', '-nostats', '-i', p, '-vn', '-af', 'ebur128=framelog=quiet', '-f', 'null', '-']);
+      const m = x.err.match(/Integrated loudness:\s*\n\s*I:\s*(-?[\d.]+)\s*LUFS/); if (m) r.lufs = +m[1];
+    }
+    await fsp.mkdir(path.join(cacheDir, 'loud'), { recursive: true }); await fsp.writeFile(f, JSON.stringify(r)).catch(() => { });
+    return r;
+  }
   async function highlights(p, target = 45) {
     const pr = await probe(p), dur = pr.dur || 0;
     if (dur < 60) return { dur, clips: [] };
@@ -293,6 +304,6 @@ function createNative({ cacheDir, ffmpegPath, log = () => { } }) {
     return r.code === 0 && (await exists(f)) ? f : null;
   }
   function shutdown() { for (const w of pool) w.terminate(); }
-  return { analyze, ensureDisp, cacheFilesOf, cacheDir, exif, strip, highlights, cacheFile, probe, preparedPath, prepEnqueue, prepStatus, encoders, scan, shutdown, IMG, VID, AUD };
+  return { analyze, ensureDisp, cacheFilesOf, cacheDir, exif, strip, highlights, loudness, cacheFile, probe, preparedPath, prepEnqueue, prepStatus, encoders, scan, shutdown, IMG, VID, AUD };
 }
 module.exports = { createNative };

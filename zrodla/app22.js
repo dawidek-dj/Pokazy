@@ -75,7 +75,7 @@ function openAlbum() {
     const scope = b.querySelector('#alScope').value, dest = await NATIVE.pickFolder(); if (!dest) return;
     let list = showList.filter(it => it.file && it.file.native && !(O[it.key] || {}).priv);
     if (scope === 'fav') list = list.filter(it => (O[it.key] || {}).fav); else if (scope[0] === 'd') { const d = +scope.slice(1); list = list.filter(it => dayIndexOf(it.t) === d); }
-    const its = list.map(it => { const d = dayIndexOf(it.t); return { path: it.file.fullPath, kind: it.kind, rot: (O[it.key] || {}).rot || 0, part: d >= 0 && dayList[d] ? dayList[d].label : '', time: timeIsApprox(it) ? '' : fmtHM(it.t), cap: [it.place, it.from ? '📷 ' + it.from : ''].filter(Boolean).join(' · '), name: it.name }; });
+    const its = list.map(it => { const d = dayIndexOf(it.t); const q = O[it.key] || {}; return { path: it.file.fullPath, kind: it.kind, rot: q.rot || 0, edit: q.crop || q.tilt ? { crop: q.crop, tilt: q.tilt } : null, part: d >= 0 && dayList[d] ? dayList[d].label : '', time: timeIsApprox(it) ? '' : fmtHM(it.t), cap: [it.place, it.from ? '📷 ' + it.from : ''].filter(Boolean).join(' · '), name: it.name }; });
     const sub = dayList.length ? new Date(dayList[0].start).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
     const r = await (await fetch(`/native/album?t=${NATIVE.token}`, { method: 'POST', body: JSON.stringify({ dest, title: S.names.trim() || projName(), sub, items: its, html: ALBUM_HTML }) })).json();
     const pr = b.querySelector('#alProg'); pr.hidden = false;
