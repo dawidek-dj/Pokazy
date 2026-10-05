@@ -105,7 +105,9 @@ const byKey = new Map();
 const sources = new Map();   // nazwa -> liczba
 let order = [], showList = [], dayList = [], slides = [];
 let favMode = false;
-let pairOf = new Map();   // klucz pliku -> drugie zdjęcie pokazywane obok niego   // pokaz tylko ulubionych (przycisk „★ Ulubione” albo po zakończeniu pokazu)
+let pairOf = new Map(), pairIdx = new Map();
+const PAIRC = ['#E2939A', '#8FD3B6', '#7FB8D8', '#E8C26E', '#B79CE0', '#F0A868'];   // kolory par: sąsiednie pary od razu się odróżniają
+const pairColor = key => pairIdx.has(key) ? PAIRC[pairIdx.get(key) % PAIRC.length] : '';   // klucz pliku -> drugie zdjęcie pokazywane obok niego   // pokaz tylko ulubionych (przycisk „★ Ulubione” albo po zakończeniu pokazu)
 let win = null;              // {start, end, startKey, days, auto}
 let autoWin = null;
 
@@ -312,6 +314,7 @@ async function extractMeta(it) {
   let dev;
   if (m.model) { const mk = (m.make || '').split(' ')[0]; dev = mk && !m.model.toLowerCase().startsWith(mk.toLowerCase()) && mk.toLowerCase() !== 'apple' ? `${mk} ${m.model}` : m.model; }
   else if (m.fname.whatsapp) dev = 'WhatsApp';
+  else if (/^PXL_\d{8}/i.test(it.name)) dev = 'Google Pixel';
   else if (/^received_\d+/i.test(it.name) || /messenger/i.test(it.path || '')) dev = 'Messenger';
   else if (/^FB_IMG_\d+/i.test(it.name) || /facebook/i.test(it.path || '')) dev = 'Facebook';
   else if (/^signal-\d{4}/i.test(it.name) || /(^|[\\/])signal([\\/]|$)/i.test(it.path || '')) dev = 'Signal';
@@ -570,20 +573,27 @@ function buildSlides() {
   if (favMode) slides.push({ type: 'favtitle', t: showList[0]?.t ?? 0 });
   else if (S.showTitle && S.names.trim()) slides.push({ type: 'title', t: showList[0]?.t ?? 0 });
   let cur = null;
+  const used = new Set(), o = x => O[x.key] || {}, inList = new Map(showList.map(x => [x.key, x]));
+  const free = x => !o(x).noPair && !o(x).pairWith;
   for (let i = 0; i < showList.length; i++) {
-    const it = showList[i], d = dayIndexOf(it.t);
+    const it = showList[i]; if (used.has(it.key)) continue;
+    const d = dayIndexOf(it.t);
     if (S.showTitle && d !== cur && d >= 0 && d < dayList.length && !dayList[d].filler) slides.push({ type: 'chapter', day: d, t: it.t });
     cur = d;
-    const nx = showList[i + 1];
+    // para ułożona ręcznie — zawsze razem, w miejscu wcześniejszego zdjęcia
+    const pw = o(it).pairWith && inList.get(o(it).pairWith);
+    if (pw && !used.has(pw.key) && it.kind === 'image' && pw.kind === 'image') { used.add(pw.key); slides.push({ type: 'item', items: [it, pw], t: it.t, manual: true }); continue; }
+    let j = i + 1; while (showList[j] && used.has(showList[j].key)) j++;
+    const nx = showList[j] && free(it) && free(showList[j]) ? showList[j] : null;
     // dwie perspektywy: ta sama chwila z dwóch różnych telefonów, obok siebie
     // tylko pewne godziny (z aparatu/nazwy), różne telefony i różne kadry — nie kopia tego samego zdjęcia
     const sure = x => x.kind === 'image' && x.conf >= 2 && !x.review && !['manual', 'visual', 'sequence', 'wa', 'approx'].includes(x.how);
     if (S.duo && nx && sure(it) && sure(nx) && nx.device !== it.device && nx.t - it.t <= S.duoSec * 1000
         && !(it.hash && nx.hash && ham(it.hash, nx.hash) <= 12) && dayIndexOf(nx.t) === d) {
-      slides.push({ type: 'item', items: [it, nx], t: it.t, duo: true }); i++; continue;
+      slides.push({ type: 'item', items: [it, nx], t: it.t, duo: true }); used.add(nx.key); continue;
     }
     if (S.pairPortraits && nx && isPortrait(it) && isPortrait(nx) && nx.t - it.t < 180000 && dayIndexOf(nx.t) === d) {
-      slides.push({ type: 'item', items: [it, nx], t: it.t }); i++; continue;
+      slides.push({ type: 'item', items: [it, nx], t: it.t }); used.add(nx.key); continue;
     }
     slides.push({ type: 'item', items: [it], t: it.t });
   }
@@ -592,7 +602,7 @@ function buildSlides() {
     slides.push({ type: 'credits', t: showList[showList.length - 1].t + 1 });
     slides.push({ type: 'end', t: showList[showList.length - 1].t + 2 });
   }
-  pairOf = new Map();
-  for (const s of slides) if (s.items && s.items.length > 1) { pairOf.set(s.items[0].key, s.items[1]); pairOf.set(s.items[1].key, s.items[0]); }
+  pairOf = new Map(); pairIdx = new Map(); let pk = 0;
+  for (const s of slides) if (s.items && s.items.length > 1) { pairOf.set(s.items[0].key, s.items[1]); pairOf.set(s.items[1].key, s.items[0]); pairIdx.set(s.items[0].key, pk); pairIdx.set(s.items[1].key, pk); pk++; }
   computeFit();
 }

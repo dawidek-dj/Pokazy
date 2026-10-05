@@ -342,7 +342,7 @@ function updConsole() {
       else { const t = document.createElement('span'); t.className = 'nxcard'; t.textContent = slideLabel(sj).replace('Plansza: ', ''); b.append(t); }
       const cap = document.createElement('small');
       cap.textContent = sj.type === 'item' ? `${fmtHM(sj.t)}${it.kind === 'video' ? ' ▶ film' : ''}${sj.items.length > 1 ? ' · ⧉ 2 razem' : ''}` : 'plansza';
-      if (sj.items && sj.items.length > 1) b.classList.add('pair');
+      if (sj.items && sj.items.length > 1) { b.classList.add('pair'); b.style.setProperty('--pc', pairColor(sj.items[0].key)); }
       b.append(cap); b.title = sj.items ? sj.items.map(x => x.name).join(', ') : slideLabel(sj);
       b.dataset.i = j; b.onclick = () => goto(j);
       strip.append(b);

@@ -273,8 +273,8 @@ function markTile(it) {
   if (it.analyzeErr) b.push('<span class="b rev" title="Nie udało się otworzyć pliku">błąd</span>');
   if (it.kind === 'video' && (O[it.key] || {}).vol != null) b.push(`<span class="b" title="Własna głośność filmu">🔊 ${Math.round(O[it.key].vol * 100)}%</span>`);
   const pr = it.inShow && pairOf.get(it.key);
-  if (pr) b.push(`<span class="b pair" title="Na ekranie razem z: ${pr.name.replace(/"/g, '')}">⧉ razem z ${pr.name.replace(/[<>&"]/g, '')}</span>`);
-  t.classList.toggle('paired', !!pr);
+  if (pr) b.push(`<span class="b pair" title="Na ekranie razem z: ${pr.name.replace(/"/g, '')}">⧉ ${pairIdx.get(it.key) + 1}${(O[it.key] || {}).pairWith ? ' ✋' : ''} · ${pr.name.replace(/[<>&"]/g, '')}</span>`);
+  t.classList.toggle('paired', !!pr); if (pr) t.style.setProperty('--pc', pairColor(it.key)); else t.style.removeProperty('--pc');
   t.classList.toggle('fav', !!(O[it.key] || {}).fav);
   t.querySelector('.cap').innerHTML = `<span class="t">${fmtHM(it.t)}</span>${b.join('')}`;
   t.classList.toggle('off', !it.inShow);

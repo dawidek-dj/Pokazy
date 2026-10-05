@@ -13,6 +13,7 @@ async function ensureThumbURL(it) {
 }
 function stripThumbs(btn, s) {
   const wrap = document.createElement('span'); wrap.className = 'nxims' + (s.items.length > 1 ? ' two' : '');
+  if (s.items.length > 1) wrap.style.setProperty('--pc', pairColor(s.items[0].key));
   s.items.forEach((it, k) => {
     if (k) { const l = document.createElement('i'); l.className = 'nxlink'; l.textContent = '⧉'; l.title = 'Te dwa zdjęcia będą na ekranie razem'; wrap.append(l); }
     const im = document.createElement('img'); im.alt = ''; im.title = it.name;

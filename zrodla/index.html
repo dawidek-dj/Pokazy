@@ -430,13 +430,16 @@ body.showing .sbsplit,body.console-on .sbsplit{display:none}
 .cremain{flex-basis:100%;font-size:13px;color:var(--sage)}
 .cremain:empty{display:none}
 /* pary zdjęć */
-.b.pair{background:#5A4520;color:var(--gold2)}
-.tile.paired{box-shadow:0 0 0 2px var(--gold)}
+.b.pair{background:var(--pc,#5A4520);color:#1a1418;font-weight:600}
+.tile.paired{box-shadow:0 0 0 3px var(--pc,var(--gold))}
+body.pairpick #timeline .tile{cursor:crosshair}
+.pdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.pickbar{position:fixed;left:50%;top:76px;transform:translateX(-50%);z-index:150;padding:10px 16px;border-radius:12px;background:var(--panel);border:1px solid var(--gold);box-shadow:0 10px 30px rgba(0,0,0,.4);display:flex;gap:10px;align-items:center}
 .nxims{display:flex;align-items:center;gap:2px;width:112px;height:72px;border-radius:6px;overflow:hidden;background:#000}
 .nxims img{flex:1;min-width:0;height:100%;object-fit:cover}
-.nxims.two{box-shadow:0 0 0 2px var(--gold)}
+.nxims.two{box-shadow:0 0 0 3px var(--pc,var(--gold))}
 .nxlink{font-style:normal;color:var(--gold2);font-size:12px;margin:0 -1px;z-index:1}
-.nx.pair small{color:var(--gold2)}
+.nx.pair small{color:var(--pc,var(--gold2));font-weight:600}
 .nx:hover .nxims{outline:2px solid var(--gold2)}
 /* legenda */
 .legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}
