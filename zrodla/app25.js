@@ -374,20 +374,3 @@ Drawer.render = function () {
   heartbeat(() => { const sb = q('seriesBtn'); if (!sb || sb._t && Date.now() - sb._t < 5000) return; sb._t = Date.now(); const n = items.length ? seriesGroups().length : 0; sb.hidden = !n; sb.textContent = `▦ Serie (${n})`; });
 })();
 
-// start
-Hist.last = JSON.stringify(O);
-bindSettings();
-bindExtraSettings();
-renderSidebar();
-renderTimeline();
-renderHeader();
-renderReopen();
-updUndoUI();
-updMVUI();
-updGReqUI();
-updProjUI();
-updGPUI();
-for (const P of Picker.inst) Picker.render(P);
-if (location.protocol === 'file:') $('#fileWarn').hidden = false;
-Remote.init();
-if (!NATIVE) offerRecovery();

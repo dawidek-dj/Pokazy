@@ -181,7 +181,7 @@ const showAnnounceA = showAnnounce;
 showAnnounce = function (text, sec, mode) {
   const r = showAnnounceA.apply(this, arguments);
   const k = annSoundFor(String(text || ''));
-  if (k) {
+  if (k && !(typeof castAudioOn === 'function' && castAudioOn())) {   // przy dźwięku z urządzenia bez kabla gra je to urządzenie
     const ducked = Music.active() && !Music.suppressed; if (ducked) Music.fade(0.2, 250);
     const d = sndPlay(k);
     if (ducked) setTimeout(() => { if (!Music.suppressed) Music.fade(1, 900); }, Math.max(800, d * 1000 - 400));

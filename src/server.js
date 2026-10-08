@@ -45,11 +45,32 @@ const UP_EXT = /\.(jpe?g|png|heic|heif|webp|gif|mp4|mov|m4v|webm|3gp|mkv)$/i;
 function createServer({ webDir, port = 8765, native = null, log = () => { }, tileDir = null, exporter = null, importer = null, albumer = null, copier = null, buildMosaic = null, drives = () => [], tmpDir = os.tmpdir() }) {
   const token = crypto.randomBytes(18).toString('hex');   // klucz tylko dla okna aplikacji (dostęp do plików)
   const roots = new Set();
+  async function radioPipe(u, req, res) {
+    if (!/^https?:\/\//i.test(u)) return json(res, { ok: false }, 400);
+        const open = (url, hops = 0) => new Promise((ok, fail) => {
+      const mod = url.startsWith('https') ? https : http;
+      const r2 = mod.get(url, { headers: { 'User-Agent': 'Pokazy/1.0', 'Icy-MetaData': '0' } }, x => {
+        if (x.statusCode >= 300 && x.statusCode < 400 && x.headers.location && hops < 5) { x.resume(); return open(new URL(x.headers.location, url).toString(), hops + 1).then(ok, fail); }
+        const ct = String(x.headers['content-type'] || '');
+        if (/mpegurl|scpls|x-scpls|audio\/x-mpegurl/i.test(ct) || /\.(m3u|pls)(\?|$)/i.test(url)) {
+          let body = ''; x.on('data', d => { body += d; if (body.length > 65536) x.destroy(); }); x.on('end', () => { const m = body.match(/https?:\/\/[^\s"'<>]+/); m && hops < 5 ? open(m[0], hops + 1).then(ok, fail) : fail(new Error('pusta lista stacji')); });
+          return;
+        }
+        ok(x);
+      });
+      r2.on('error', fail); r2.setTimeout(12000, () => r2.destroy(new Error('timeout')));
+    });
+    try {
+      const x = await open(u);
+      res.writeHead(200, { 'Content-Type': x.headers['content-type'] || 'audio/mpeg', 'Cache-Control': 'no-store' });
+      x.pipe(res); req.on('close', () => x.destroy());
+    } catch (e) { return json(res, { ok: false, err: String(e.message || e) }, 502); }
+  }
   const TJ = { state: 'idle', total: 0, done: 0, fail: 0, run: 0 };
   const tvPin = String(Math.floor(1000 + Math.random() * 9000));   // krótki kod dla telewizora (ekran bez kabla)
   const PK = { state: 'idle', done: 0, total: 0, root: '', err: '' };   // pakowanie projektu                                 // foldery, które użytkownik dodał — tylko z nich wolno czytać
   const ST = { token: '', gtoken: '', gflags: '', state: Buffer.from('{}'), cmds: [], thumb: Buffer.alloc(0), rev: 0, lastSync: 0, seen: new Map(), ids: [], thumbs: new Map(), glast: new Map(),
-    uploadDir: '', ulog: new Map(), gallery: [], galleryTitle: '', itoken: '', importDir: '', assetDir: '' };
+    uploadDir: '', ulog: new Map(), gallery: [], galleryTitle: '', itoken: '', importDir: '', assetDir: '', screens: new Map(), castMusic: '' };
 
   const send = (res, code, type, body, head) => {
     body = body == null ? Buffer.alloc(0) : Buffer.isBuffer(body) ? body : Buffer.from(String(body));
@@ -140,6 +161,8 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
       }
       if (p === '/native/albumstatus') return json(res, { ok: true, ...albumer.status() });
       // ekran bez kabla: lista mediów bieżącego i kolejnych slajdów (telewizor pobiera je przez Wi-Fi)
+      if (p === '/native/tvclients') { const tnow = Date.now(), L = [...(ST.tvc || new Map()).entries()].filter(([, v]) => tnow - v.last < 4500).map(([id, v]) => ({ id, name: v.name, audio: v.audio })); return json(res, { ok: true, list: L }); }
+      if (p === '/native/castmusic' && req.method === 'POST') { const d = JSON.parse((await readBody(req)).toString('utf8') || '{}'); if (d.path) roots.add(path.dirname(d.path)); ST.castMusic = { path: d.path || '', radio: d.radio || '' }; return json(res, { ok: true }); }
       if (p === '/native/castmedia' && req.method === 'POST') {
         const d = JSON.parse((await readBody(req)).toString('utf8') || '{}');
         ST.cast = new Map((d.items || []).filter(x => x && x.key && x.path && inRoots(x.path)).map(x => [x.key, x]));
@@ -275,28 +298,7 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
         try { return send(res, 200, 'text/html; charset=utf-8', await ytGet('https://www.youtube.com/results?search_query=' + encodeURIComponent(qq) + '&sp=EgIQAQ%3D%3D&hl=pl&gl=PL')); } catch { return json(res, { ok: false }, 502); }
       }
       if (p === '/api/info' && local) return json(res, { ips: lanIps(), port, app: true, tvPin });
-      if (p === '/api/radio' && local) {
-        let u = q.get('u') || ''; if (!/^https?:\/\//i.test(u)) return json(res, { ok: false }, 400);
-        const open = (url, hops = 0) => new Promise((ok, fail) => {
-          const mod = url.startsWith('https') ? https : http;
-          const r2 = mod.get(url, { headers: { 'User-Agent': 'Pokazy/1.0', 'Icy-MetaData': '0' } }, x => {
-            if (x.statusCode >= 300 && x.statusCode < 400 && x.headers.location && hops < 5) { x.resume(); return open(new URL(x.headers.location, url).toString(), hops + 1).then(ok, fail); }
-            const ct = String(x.headers['content-type'] || '');
-            if (/mpegurl|scpls|x-scpls|audio\/x-mpegurl/i.test(ct) || /\.(m3u|pls)(\?|$)/i.test(url)) {
-              let body = ''; x.on('data', d => { body += d; if (body.length > 65536) x.destroy(); }); x.on('end', () => { const m = body.match(/https?:\/\/[^\s"'<>]+/); m && hops < 5 ? open(m[0], hops + 1).then(ok, fail) : fail(new Error('pusta lista stacji')); });
-              return;
-            }
-            ok(x);
-          });
-          r2.on('error', fail); r2.setTimeout(12000, () => r2.destroy(new Error('timeout')));
-        });
-        try {
-          const x = await open(u);
-          res.writeHead(200, { 'Content-Type': x.headers['content-type'] || 'audio/mpeg', 'Cache-Control': 'no-store' });
-          x.pipe(res); req.on('close', () => x.destroy());
-        } catch (e) { return json(res, { ok: false, err: String(e.message || e) }, 502); }
-        return;
-      }
+      if (p === '/api/radio' && local) return radioPipe(q.get('u') || '', req, res);
       if (p === '/api/tv/pin') { const c = String(q.get('c') || ''); return c === tvPin && ST.token ? json(res, { ok: true, k: ST.token }) : json(res, { ok: false }, 403); }
       if (p === '/api/sync' && local && req.method === 'POST') {
         const data = await readBody(req);
@@ -360,6 +362,9 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
       }
       if (p.startsWith('/api/r/')) {
         if (!ST.token || q.get('k') !== ST.token) return json(res, { ok: false }, 403);
+        if (q.get('tv')) { ST.tvc = ST.tvc || new Map(); ST.tvc.set(String(q.get('id') || '').slice(0, 40), { last: now, name: String(q.get('n') || 'Urządzenie').slice(0, 40), audio: q.get('a') === '1' }); }
+        if (p === '/api/r/music') { const m = ST.castMusic || {}; return m.path && inRoots(m.path) ? sendFile(req, res, m.path) : send(res, 404, 'text/plain', '404'); }
+        if (p === '/api/r/radio') { const m = ST.castMusic || {}; return m.radio ? radioPipe(m.radio, req, res) : send(res, 404, 'text/plain', '404'); }
         if (p === '/api/r/media') { const it = ST.cast && ST.cast.get(q.get('key') || ''); if (!it) return send(res, 404, 'text/plain', '404'); if (q.get('v') === 'disp' && native) { const d = await native.cacheFile(it.path, 'disp').catch(() => null); if (d) return sendFile(req, res, d, 'image/jpeg'); } const pv = it.kind === 'video' && native ? await native.preparedPath(it.path, 3840).catch(() => null) : null; return sendFile(req, res, pv || it.path); }
         ST.seen.set(clientIp(req), now);
         if (p === '/api/r/state') return send(res, 200, 'application/json; charset=utf-8', Buffer.concat([Buffer.from(`{"ok":true,"offline":${now - ST.lastSync > 10000},"rev":${ST.rev},"state":`), ST.state, Buffer.from('}')]), head);

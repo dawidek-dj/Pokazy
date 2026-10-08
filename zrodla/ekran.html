@@ -2,11 +2,11 @@
 <html lang="pl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Pokazy — ekran</title>
 <link rel="stylesheet" href="lib/fonts.css">
 <style>
-:root{--gold:#D8B878;--gold2:#EDD4A0;--text:#F2E9DC;--muted:#B5A5B1;--serif:'Cormorant Garamond',Georgia,serif;--sans:Jost,system-ui,sans-serif;--card-bg:radial-gradient(ellipse at 50% 35%,#2d2033 0%,#110b14 70%)}
+:root{--gold:#D8B878;--gold2:#EDD4A0;--text:#F2E9DC;--muted:#B5A5B1;--rose:#E2939A;--serif:'Cormorant Garamond',Georgia,serif;--sans:Jost,system-ui,sans-serif;--card-bg:radial-gradient(ellipse at 50% 35%,#2d2033 0%,#110b14 70%)}
 html,body{margin:0;height:100%;background:#000;color:var(--text);overflow:hidden;font-family:var(--sans)}
 body.hidecur{cursor:none}
 .L{position:absolute;inset:0;opacity:0;transition:opacity .9s ease;display:grid;place-items:center}
@@ -15,24 +15,29 @@ body.hidecur{cursor:none}
 .L .media{position:relative;display:flex;gap:1.5vw;align-items:center;justify-content:center;width:100%;height:100%}
 .L img,.L video{max-width:100%;max-height:100%;object-fit:contain}
 .L .media.pair img{max-width:48%}
+.L.cardL{background:var(--card-bg)}
 .card{position:relative;display:grid;gap:2vh;justify-items:center;text-align:center;padding:4vw}
 .card .sub{font:400 clamp(16px,2vw,34px)/1.3 var(--sans);color:var(--muted)}
 .card .title{font:italic 500 clamp(40px,7vw,130px)/1.05 var(--serif);color:var(--gold2)}
 .card .rule{width:min(30vw,420px);height:2px;background:var(--gold)}
-.L.cardL{background:var(--card-bg)}
-.cap{position:absolute;left:3vw;bottom:4vh;font:italic 500 clamp(18px,2vw,36px)/1.2 var(--serif);color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.8);z-index:5}
+.cap{position:absolute;left:3vw;bottom:4vh;font:italic 500 clamp(18px,2vw,36px)/1.2 var(--serif);color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.8);z-index:5;max-width:80vw}
 .ann{position:absolute;inset:0;display:grid;place-items:start center;z-index:6;pointer-events:none}
 .ann.brk{place-items:center;background:rgba(0,0,0,.55)}
 .ann div{margin-top:4vh;padding:2vh 3vw;border-radius:18px;background:rgba(20,14,22,.88);border:1px solid var(--gold);font:italic 500 clamp(24px,3.4vw,64px)/1.2 var(--serif);color:var(--gold2);text-align:center;max-width:80vw}
 .ann.brk div{margin:0;font-size:clamp(40px,6vw,110px)}
-.btns{position:absolute;right:2vw;top:2vh;display:flex;gap:8px;z-index:9;opacity:0;transition:opacity .4s}
-body:hover .btns,.btns.show{opacity:1}
-.btns button{font:inherit;font-size:18px;color:#fff;background:rgba(20,14,22,.8);border:1px solid #555;border-radius:999px;padding:8px 14px;cursor:pointer}
+.btns{position:fixed;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));display:flex;gap:10px;z-index:9;opacity:0;transition:opacity .4s}
+.btns.show{opacity:1}
+.btns button{height:48px;padding:0 18px;font:500 16px/1 var(--sans);color:#fff;background:rgba(20,14,22,.88);border:1px solid #777;border-radius:999px;cursor:pointer;white-space:nowrap}
+[hidden]{display:none!important}   /* ukryte elementy (ogłoszenie, napis „Dotknij”, komunikaty) naprawdę znikają */
+.tap{position:fixed;inset:0;z-index:20;display:grid;place-items:center;text-align:center;background:rgba(10,6,12,.78);cursor:pointer;padding:6vw}
+.tap b{display:block;font:italic 500 clamp(30px,5vw,80px)/1.1 var(--serif);color:var(--gold2);margin-bottom:2vh}
+.tap p{font-size:clamp(16px,2vw,30px);color:var(--muted);margin:0}
 .msg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;z-index:8;padding:5vw}
 .msg b{font:italic 500 clamp(30px,4vw,70px)/1.1 var(--serif);color:var(--gold2);display:block;margin-bottom:2vh}
 .msg p{font-size:clamp(16px,1.6vw,28px);color:var(--muted);margin:1vh 0}
 .pin input{font:600 clamp(40px,6vw,96px)/1 var(--sans);letter-spacing:.3em;text-align:center;width:6ch;padding:1vh 1vw;border-radius:16px;border:2px solid var(--gold);background:#1a121c;color:var(--gold2)}
 .pin button{display:block;margin:3vh auto 0;font:600 clamp(18px,2vw,32px)/1 var(--sans);padding:1.6vh 3vw;border-radius:999px;border:0;background:var(--gold);color:#2A1D22;cursor:pointer}
+#ytm{position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none;overflow:hidden}
 </style>
 <link rel="stylesheet" href="lib/motywy.css">
 </head>
@@ -40,21 +45,91 @@ body:hover .btns,.btns.show{opacity:1}
 <div class="L" id="A"></div><div class="L" id="B"></div>
 <div class="cap" id="cap"></div>
 <div class="ann" id="ann" hidden><div id="annT"></div></div>
-<div class="btns" id="btns"><button id="snd">🔇 Dźwięk z telewizora: wył.</button><button id="fs">⛶ Pełny ekran</button></div>
+<div class="btns" id="btns"><button id="snd" title="Dźwięk na tym urządzeniu">🔊 Dźwięk: wł.</button><button id="fs" title="Pełny ekran">⛶ Pełny ekran</button></div>
+<div class="tap" id="tap" hidden><div><b>Dotknij ekranu</b><p>Włączy się dźwięk pokazu — muzyka i filmy — oraz pełny ekran.</p></div></div>
 <div class="msg" id="msg" hidden></div>
+<div id="ytm"><div id="ytp"></div></div>
+<audio id="aud" preload="none"></audio>
 <script>
 'use strict';
 const $ = s => document.querySelector(s);
 const hp = new URLSearchParams(location.hash.slice(1));
 let key = hp.get('k') || (() => { try { return localStorage.getItem('tvKey') || ''; } catch { return ''; } })();
-let front = $('#A'), back = $('#B'), shown = '', video = null, unmuted = false, lastOk = Date.now();
+if (hp.get('k')) { try { localStorage.setItem('tvKey', key); } catch { } history.replaceState(null, '', location.pathname); }
+let front = $('#A'), back = $('#B'), shown = '', video = null, lastOk = Date.now(), lastState = null;
+let unlocked = false, wantAudio = true, localMute = false;
+const devId = (() => { try { let x = localStorage.getItem('tvId'); if (!x) { x = Math.random().toString(36).slice(2, 10); localStorage.setItem('tvId', x); } return x; } catch { return 'x' + Date.now(); } })();
+const ua = navigator.userAgent;
+const devName = /Tizen|Web0S|webOS|SmartTV|SMART-TV|BRAVIA|HbbTV|AFT|CrKey|Android TV|GoogleTV|NetCast|VIDAA|Hisense/i.test(ua) ? '📺 Telewizor' : /iPad|Tablet|SM-T|\bTab\b/i.test(ua) ? '📱 Tablet' : /iPhone|Android.*Mobile|Mobile/i.test(ua) ? '📱 Telefon' : '💻 Komputer';
+const soundOn = () => unlocked && wantAudio && !localMute;
 const media = (k, v) => `/api/r/media?k=${encodeURIComponent(key)}&key=${encodeURIComponent(k)}${v ? '&v=' + v : ''}`;
 function fetchT(url, ms = 4000) { const c = new AbortController(), t = setTimeout(() => c.abort(), ms); return fetch(url, { signal: c.signal, cache: 'no-store' }).finally(() => clearTimeout(t)); }
 function msg(html) { const m = $('#msg'); m.hidden = !html; m.innerHTML = html || ''; }
+// dźwięk w przeglądarkach telefonów i telewizorów wymaga jednego dotknięcia
+function unlock() {
+  if (unlocked) return; unlocked = true; $('#tap').hidden = true;
+  try { const C = window.AudioContext || window.webkitAudioContext; if (C) { const c = new C(); c.resume(); const o = c.createOscillator(), g = c.createGain(); g.gain.value = 0.0001; o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + 0.05); } } catch { }
+  const a = $('#aud'); a.muted = true; a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='; a.play().catch(() => { }).finally(() => { a.pause(); a.muted = false; a.removeAttribute('src'); MU.src = ''; });
+  ytApi();
+  if (video) { video.muted = !soundOn(); video.play().catch(() => { }); }
+  try { (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen || (() => { })).call(document.documentElement); } catch { }
+  if (lastState) render(lastState);
+}
+$('#tap').addEventListener('click', unlock);
+// ---- dźwięki ogłoszeń (jak na laptopie): gong przy przerwie, fanfara przy torcie, dzwonek przy reszcie
+let SCTX = null, lastAnn = '';
+function sndPlay(kind) {
+  try {
+    const C = window.AudioContext || window.webkitAudioContext; SCTX = SCTX || new C(); if (SCTX.state === 'suspended') SCTX.resume();
+    const ctx = SCTX, t0 = ctx.currentTime + 0.05, out = ctx.createGain(); out.gain.value = 0.55; out.connect(ctx.destination);
+    const tone = (f, at, dur, type = 'sine', vol = 0.5, filt) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t0 + at); g.gain.linearRampToValueAtTime(vol, t0 + at + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur); let n = o; if (filt) { const b = ctx.createBiquadFilter(); b.type = 'lowpass'; b.frequency.value = filt; o.connect(b); n = b; } n.connect(g); g.connect(out); o.start(t0 + at); o.stop(t0 + at + dur + 0.05); };
+    if (kind === 'gong') { tone(98, 0, 4.5, 'sine', 0.7); tone(196.7, 0, 3.4, 'sine', 0.32); tone(295, 0, 2.4, 'sine', 0.18); tone(512, 0, 1.3, 'sine', 0.07); }
+    if (kind === 'dzwonek') { tone(880, 0, 1.5, 'sine', 0.45); tone(1760, 0, 0.6, 'sine', 0.1); tone(698.5, 0.6, 1.8, 'sine', 0.45); tone(1397, 0.6, 0.7, 'sine', 0.1); }
+    if (kind === 'fanfara') { [[523, 0, 0.22], [659, 0.22, 0.22], [784, 0.44, 0.22], [1047, 0.66, 1.4]].forEach(([f, a, d]) => { tone(f, a, d, 'sawtooth', 0.22, 2400); tone(f / 2, a, d, 'square', 0.06, 1200); }); tone(784, 0.66, 1.4, 'sawtooth', 0.12, 2000); tone(659, 0.66, 1.4, 'sawtooth', 0.12, 2000); }
+    if (kind === 'cymbalki') [1319, 1568, 1976, 2637].forEach((f, i) => tone(f, i * 0.13, 1.2, 'sine', 0.3));
+  } catch { }
+}
+function annSound(st) {
+  const t = st.ann || ''; if (t === lastAnn) return; lastAnn = t;
+  if (!t || !soundOn()) return;
+  const s = st.annS || 'auto'; if (s === 'none') return;
+  sndPlay(s !== 'auto' ? s : /przerw/i.test(t) ? 'gong' : /tort|taniec|toast|oczepin|życzeni|zyczeni|niespodzian/i.test(t) ? 'fanfara' : 'dzwonek');
+}
+// ---- muzyka z pokazu: YouTube (własny odtwarzacz), plik z laptopa, radio
+const MU = { src: '', id: '', yt: null, ytReady: false, ytLoading: false };
+function ytApi() {
+  if (MU.ytLoading) return; MU.ytLoading = true;
+  window.onYouTubeIframeAPIReady = () => { MU.yt = new YT.Player('ytp', { width: 2, height: 2, playerVars: { autoplay: 0, controls: 0, playsinline: 1, disablekb: 1, fs: 0, rel: 0 }, events: { onReady: () => { MU.ytReady = true; if (lastState) music(lastState.mus); }, onStateChange: () => { }, onError: () => { } } }); };
+  const sc = document.createElement('script'); sc.src = 'https://www.youtube.com/iframe_api'; sc.onerror = () => { MU.ytLoading = false; }; document.head.append(sc);
+}
+function music(m) {
+  const a = $('#aud'), play = soundOn() && m && m.on;
+  const stopYT = () => { if (MU.ytReady) try { if (MU.yt.getPlayerState() === 1) MU.yt.pauseVideo(); } catch { } };
+  if (!m || !m.src || m.src === 'none') { a.pause(); stopYT(); return; }
+  if (m.src !== 'yt') stopYT();
+  if (m.src === 'yt') {
+    a.pause(); if (!unlocked) return; ytApi(); if (!MU.ytReady || !m.id) return;
+    try {
+      if (MU.id !== m.id || MU.src !== 'yt') { MU.id = m.id; MU.src = 'yt'; MU.yt.loadVideoById({ videoId: m.id, startSeconds: (m.t || 0) + 1 }); if (!play) setTimeout(stopYT, 700); return; }
+      MU.yt.setVolume(Math.round((m.vol || 0) * 100));
+      const st = MU.yt.getPlayerState();
+      if (play && st !== 1 && st !== 3) MU.yt.playVideo();
+      if (!play && st === 1) MU.yt.pauseVideo();
+      if (play && st === 1 && Math.abs((MU.yt.getCurrentTime() || 0) - ((m.t || 0) + 0.4)) > 3) MU.yt.seekTo((m.t || 0) + 0.8, true);
+    } catch { }
+    return;
+  }
+  const url = m.src === 'radio' ? `/api/r/radio?k=${encodeURIComponent(key)}&v=${encodeURIComponent(m.id)}` : `/api/r/music?k=${encodeURIComponent(key)}&v=${encodeURIComponent(m.id)}`;
+  if (MU.src !== m.src || MU.id !== m.id) { MU.src = m.src; MU.id = m.id; a.src = url; if (m.src === 'file') a.addEventListener('loadedmetadata', () => { try { a.currentTime = (m.t || 0) + 0.5; } catch { } }, { once: true }); }
+  a.volume = Math.max(0, Math.min(1, m.vol || 0));
+  if (play && a.paused) a.play().catch(() => { });
+  if (!play && !a.paused) a.pause();
+  if (play && m.src === 'file' && a.readyState >= 1 && Math.abs(a.currentTime - ((m.t || 0) + 0.3)) > 3) { try { a.currentTime = (m.t || 0) + 0.5; } catch { } }
+}
 function pinScreen(err) {
   msg(`<div class="pin"><b>Ekran pokazu</b><p>Wpisz kod widoczny w programie Pokazy na laptopie</p><input id="pin" inputmode="numeric" maxlength="4" autocomplete="off"><p style="color:#E2939A">${err || ''}</p><button id="go">Połącz</button></div>`);
   const i = $('#pin'); i.focus();
-  const go = async () => { try { const r = await fetchT('/api/tv/pin?c=' + encodeURIComponent(i.value.trim())); const d = await r.json(); if (d.ok) { key = d.k; try { localStorage.setItem('tvKey', key); } catch { } msg(''); loop(); } else pinScreen('Nieprawidłowy kod — sprawdź na laptopie.'); } catch { pinScreen('Brak połączenia z laptopem.'); } };
+  const go = async () => { unlock(); try { const r = await fetchT('/api/tv/pin?c=' + encodeURIComponent(i.value.trim())); const d = await r.json(); if (d.ok) { key = d.k; try { localStorage.setItem('tvKey', key); } catch { } msg(''); loop(); } else pinScreen('Nieprawidłowy kod — sprawdź na laptopie.'); } catch { pinScreen('Brak połączenia z laptopem.'); } };
   $('#go').onclick = go; i.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
 }
 function swap(build) {
@@ -63,11 +138,18 @@ function swap(build) {
   requestAnimationFrame(() => { L.classList.add('on'); front.classList.remove('on'); [front, back] = [L, front]; setTimeout(() => { if (!back.classList.contains('on')) { back.querySelectorAll('video').forEach(v => v.pause()); back.replaceChildren(); } }, 1000); });
 }
 function render(st) {
+  lastState = st;
   document.body.dataset.theme = st.theme || '';
-  const c = st.cast;
-  // ogłoszenie
+  wantAudio = st.castAudio !== false;
+  annSound(st);
+  $('#tap').hidden = unlocked || !wantAudio;
   const an = $('#ann'); an.hidden = !st.ann; an.classList.toggle('brk', !!st.annBrk); $('#annT').textContent = st.ann || '';
-  if (!st.on || !c) { if (shown !== 'idle') { shown = 'idle'; swap(L => { L.classList.add('cardL'); L.innerHTML = '<div class="card"><div class="title">Pokazy</div><div class="rule"></div><div class="sub">Czekam na rozpoczęcie pokazu na laptopie…</div></div>'; }); $('#cap').textContent = ''; } return; }
+  music(st.on ? st.mus : null);
+  const c = st.cast;
+  if (!st.on || !c) {
+    if (shown !== 'idle') { shown = 'idle'; swap(L => { L.classList.add('cardL'); L.innerHTML = '<div class="card"><div class="title">Pokazy</div><div class="rule"></div><div class="sub">Połączono ✓ — pokaz zacznie się po uruchomieniu na laptopie</div></div>'; }); $('#cap').textContent = ''; }
+    return;
+  }
   const sig = c.keys ? c.keys.join('+') : 'card:' + (c.card && c.card.title);
   if (sig !== shown) {
     shown = sig;
@@ -76,19 +158,15 @@ function render(st) {
       const bg = document.createElement('div'); bg.className = 'bg'; L.append(bg);
       const m = document.createElement('div'); m.className = 'media' + (c.keys.length > 1 ? ' pair' : ''); L.append(m);
       c.keys.forEach((k, i) => {
-        if (c.kinds[i] === 'video') {
-          const v = document.createElement('video'); v.src = media(k); v.playsInline = true; v.muted = !unmuted; v.preload = 'auto'; m.append(v); video = v; bg.style.background = '#000';
-        } else {
-          const im = document.createElement('img'); im.src = media(k, 'disp'); if (c.rots && c.rots[i]) im.style.transform = `rotate(${c.rots[i]}deg)`; m.append(im);
-          if (i === 0) bg.style.backgroundImage = `url("${media(k, 'disp')}")`;
-        }
+        if (c.kinds[i] === 'video') { const v = document.createElement('video'); v.src = media(k); v.playsInline = true; v.muted = !soundOn(); v.preload = 'auto'; m.append(v); video = v; bg.style.background = '#000'; }
+        else { const im = document.createElement('img'); im.src = media(k, 'disp'); if (c.rots && c.rots[i]) im.style.transform = `rotate(${c.rots[i]}deg)`; m.append(im); if (i === 0) bg.style.backgroundImage = `url("${media(k, 'disp')}")`; }
       });
     });
   }
   $('#cap').textContent = c.cap || '';
-  // film: zgodnie z laptopem (pauza, czas)
   if (video) {
-    if (st.playing && video.paused) video.play().catch(() => { });
+    video.muted = !soundOn();
+    if (st.playing && video.paused) video.play().catch(() => { video.muted = true; video.play().catch(() => { }); });
     if (!st.playing && !video.paused) video.pause();
     if (typeof st.vt === 'number' && video.readyState >= 1 && Math.abs(video.currentTime - (st.vt + 0.3)) > 1.5) { try { video.currentTime = st.vt + 0.3; } catch { } }
   }
@@ -96,18 +174,20 @@ function render(st) {
 async function loop() {
   if (!key) { pinScreen(); return; }
   try {
-    const r = await fetchT(`/api/r/state?k=${encodeURIComponent(key)}`);
+    const r = await fetchT(`/api/r/state?k=${encodeURIComponent(key)}&tv=1&id=${devId}&n=${encodeURIComponent(devName)}&a=${soundOn() ? 1 : 0}`);
     if (r.status === 403) { try { localStorage.removeItem('tvKey'); } catch { } key = ''; pinScreen('Kod wygasł — wpisz nowy.'); return; }
     const d = await r.json(); lastOk = Date.now(); msg('');
     if (d.offline) msg('<div><b>Laptop nie odpowiada</b><p>Sprawdź, czy program Pokazy jest uruchomiony.</p></div>');
     else render(d.state || {});
-  } catch { if (Date.now() - lastOk > 10000) msg('<div><b>Brak połączenia</b><p>Telewizor i laptop muszą być w tej samej sieci Wi-Fi.</p></div>'); }
+  } catch { if (Date.now() - lastOk > 10000) msg('<div><b>Brak połączenia</b><p>Urządzenie i laptop muszą być w tej samej sieci Wi-Fi.</p></div>'); }
   setTimeout(loop, 700);
 }
-$('#snd').onclick = () => { unmuted = !unmuted; $('#snd').textContent = unmuted ? '🔊 Dźwięk z telewizora: wł.' : '🔇 Dźwięk z telewizora: wył.'; if (video) video.muted = !unmuted; };
-$('#fs').onclick = () => { (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen || (() => { })).call(document.documentElement); };
-let ct; document.addEventListener('mousemove', () => { document.body.classList.remove('hidecur'); $('#btns').classList.add('show'); clearTimeout(ct); ct = setTimeout(() => { document.body.classList.add('hidecur'); $('#btns').classList.remove('show'); }, 3000); });
-document.addEventListener('keydown', e => { if (e.key === 'Enter' && !$('#pin')) $('#btns').classList.toggle('show'); });
+function poke() { $('#btns').classList.add('show'); document.body.classList.remove('hidecur'); clearTimeout(window._bt); window._bt = setTimeout(() => { $('#btns').classList.remove('show'); document.body.classList.add('hidecur'); }, 3500); }
+document.addEventListener('pointerdown', () => { unlock(); poke(); }, true);
+document.addEventListener('mousemove', poke);
+document.addEventListener('keydown', e => { if (!$('#pin')) { unlock(); poke(); } if (e.key === 'm' || e.key === 'M') $('#snd').click(); });
+$('#snd').onclick = e => { e.stopPropagation(); if (!unlocked) { unlock(); return; } localMute = !localMute; $('#snd').textContent = localMute ? '🔇 Dźwięk: wył.' : '🔊 Dźwięk: wł.'; if (video) video.muted = !soundOn(); if (lastState) music(lastState.mus); };
+$('#fs').onclick = e => { e.stopPropagation(); try { (document.fullscreenElement ? document.exitFullscreen() : (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen).call(document.documentElement)); } catch { } };
 loop();
 </script>
 </body>

@@ -132,7 +132,7 @@ function askStart(i = 0, fav = false) {
     tvb.disabled = ext === false;
     b.querySelector(`[data-m=${ext === false ? 'single' : S.showMode}]`)?.classList.add('def');
     const cb = b.querySelector('[data-m=cast]'); if (cb) cb.disabled = false;
-    for (const c of b.querySelectorAll('.choice')) c.onclick = () => { const m = c.dataset.m; S.showMode = m === 'cast' ? S.showMode : m; saveS(); favMode = fav; window.__cast = m === 'cast'; startShow(i, m === 'cast' ? 'tv' : m); };
+    for (const c of b.querySelectorAll('.choice')) c.onclick = () => { const m = c.dataset.m; if (m === 'cast') { openCastLobby(i, fav); return; } S.showMode = m; saveS(); favMode = fav; window.__cast = false; startShow(i, m); };
     (b.querySelector('.choice.def') || b.querySelector('.choice:not(:disabled)'))?.focus();
   };
   render();
@@ -308,8 +308,10 @@ function updConsole() {
   $('#kNp').textContent = Music.active() && Music.title ? '♪ ' + Music.title : '';
   const fs = TVDOC && TVDOC.fullscreenElement;
   const st = $('#cStatus');
-  st.textContent = fs ? 'Telewizor: pełny ekran' : TV.placed ? 'Kliknij raz w obraz na telewizorze, aby włączyć pełny ekran i dźwięk' : 'Przeciągnij okno „Pokazy — telewizor” na telewizor i kliknij w nie';
-  st.classList.toggle('okay', !!fs);
+  if (!document.body.classList.contains('castmode')) {   // pokaz bez kabla: nagłówek pokazuje adres, kod i podłączone urządzenia
+    st.textContent = fs ? 'Telewizor: pełny ekran' : TV.placed ? 'Kliknij raz w obraz na telewizorze, aby włączyć pełny ekran i dźwięk' : 'Przeciągnij okno „Pokazy — telewizor” na telewizor i kliknij w nie';
+    st.classList.toggle('okay', !!fs);
+  }
   $('#cPos').textContent = `${favMode ? '★ ulubione · ' : ''}${Show.idx + 1} / ${slides.length}`;
   $('#cFavMode').textContent = favMode ? 'Wróć do całego pokazu' : `★ Pokaz ulubionych (${favCount()})`;
   updAnnUI();
@@ -454,6 +456,8 @@ const Remote = {
       msrc: S.musicSource, yt: Music.ytInfo(), queue: Music.queue.map(q => q.title + (q.from ? ` — prośba: ${q.from}` : '')), inQueue: !!YTP.inQueue,
       credits: slides.some(x => x.type === 'credits'), lockPinSet: !!S.lockPin, alerts: alertList(),
       cast: castState(),
+      mus: typeof castMus === 'function' ? castMus() : null, castAudio: S.castAudio !== false, annS: S.annSound || 'auto',
+      castm: typeof castMusicState === 'function' ? castMusicState() : null,
       note: Show.on && slides[Show.idx] && slides[Show.idx].items ? (O[slides[Show.idx].items[0].key] || {}).note || '' : '',
       eco: !!(window.Eco && Eco.on),
       remain: (() => { const r = remainInfo(); return r ? { txt: remainText(r), nom: Math.round(r.nominal / 1000), pace: r.pace ? Math.round(r.pace / 1000) : null, endAt: fmtHM(r.endAt), endAtPace: r.endAtPace ? fmtHM(r.endAtPace) : '', loops: r.loops, atEnd: r.atEnd, left: r.left, photos: r.photos, videos: r.videos } : null; })(),

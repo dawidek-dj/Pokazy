@@ -64,8 +64,7 @@ startShow = async function (...a) {
   const r = await startShowC.apply(this, a);
   document.body.classList.toggle('castmode', cast && Show.on);
   if (cast && Show.on && NATIVE) {
-    setTimeout(() => NATIVE.tvMinimize && NATIVE.tvMinimize(), 700);   // obraz idzie przez Wi-Fi na telewizor; okno na laptopie tylko gra dźwięk filmów
-    openCastInfo();
+    setTimeout(() => NATIVE.tvMinimize && NATIVE.tvMinimize(), 700);   // obraz (i domyślnie dźwięk) idzie przez Wi-Fi na urządzenie bez kabla
   }
   return r;
 };

@@ -292,6 +292,10 @@ body.console-on.ytvis .cbottom{padding-bottom:78px}
 .rehearsal video{width:320px;height:180px;background:#000;border-radius:8px}
 .timerow{display:flex;gap:6px;flex-wrap:wrap}.timerow input{min-width:0}
 .nudge{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+/* pokaz bez kabla: okno połączenia */
+.castdev{display:grid;gap:6px;padding:10px 12px;border-radius:12px;background:var(--panel2);border:1px solid var(--line)}
+.cdev{color:var(--sage)}.cdev b{color:var(--text)}
+.btn.pulse{animation:pulseGo 1.4s ease-in-out infinite}@keyframes pulseGo{50%{box-shadow:0 0 0 6px rgba(216,184,120,.25)}}
 /* kadrowanie, serie, mozaika */
 .mbox.wide{width:min(1180px,96vw);max-width:96vw}
 .edwrap{display:grid;place-items:center;background:#000;border-radius:12px;padding:10px}
@@ -321,6 +325,7 @@ body.console-on.ytvis .cbottom{padding-bottom:78px}
 @keyframes mosZoom{from{transform:scale(8)}to{transform:scale(1)}}
 .card.mosaic .mos-t{position:absolute;left:0;right:0;bottom:6vh;margin:0;text-align:center;font:italic 500 clamp(28px,4vw,76px)/1.1 var(--serif);color:var(--gold2);text-shadow:0 3px 18px rgba(0,0,0,.9)}
 .layer.on .card.mosaic .mos-t{animation:mosT 2.5s 11s both}@keyframes mosT{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.cl-list{display:grid;gap:6px}.cl-dev{display:flex;gap:10px;align-items:center;padding:10px 14px;border-radius:12px;background:var(--panel2);border:1px solid var(--sage)}.cl-dev span{color:var(--sage);font-size:14px}
 /* filtr źródeł i przesuwanie godzin */
 #srcFilter{font:inherit;font-size:13px;padding:7px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--text);max-width:220px}
 #srcFilter.on{border-color:var(--gold);color:var(--gold2)}
