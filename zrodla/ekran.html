@@ -71,11 +71,11 @@ function unlock() {
   try { const C = window.AudioContext || window.webkitAudioContext; if (C) { const c = new C(); c.resume(); const o = c.createOscillator(), g = c.createGain(); g.gain.value = 0.0001; o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + 0.05); } } catch { }
   const a = $('#aud'); a.muted = true; a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='; a.play().catch(() => { }).finally(() => { a.pause(); a.muted = false; a.removeAttribute('src'); MU.src = ''; });
   ytApi();
-  if (video) { video.muted = !soundOn(); video.play().catch(() => { }); }
+  if (video) { video.muted = !soundOn() || video._mute; video.play().catch(() => { }); }
   try { (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen || (() => { })).call(document.documentElement); } catch { }
   if (lastState) render(lastState);
 }
-$('#tap').addEventListener('click', unlock);
+$('#tap').addEventListener('click', () => { unlock(); kick(); blocked(false); });
 // ---- dźwięki ogłoszeń (jak na laptopie): gong przy przerwie, fanfara przy torcie, dzwonek przy reszcie
 let SCTX = null, lastAnn = '';
 function sndPlay(kind) {
@@ -96,41 +96,71 @@ function annSound(st) {
   sndPlay(s !== 'auto' ? s : /przerw/i.test(t) ? 'gong' : /tort|taniec|toast|oczepin|życzeni|zyczeni|niespodzian/i.test(t) ? 'fanfara' : 'dzwonek');
 }
 // ---- muzyka z pokazu: YouTube (własny odtwarzacz), plik z laptopa, radio
-const MU = { src: '', id: '', yt: null, ytReady: false, ytLoading: false };
+const MU = { src: '', id: '', yt: null, ytReady: false, ytLoading: false, since: 0, blocked: false };
 function ytApi() {
   if (MU.ytLoading) return; MU.ytLoading = true;
-  window.onYouTubeIframeAPIReady = () => { MU.yt = new YT.Player('ytp', { width: 2, height: 2, playerVars: { autoplay: 0, controls: 0, playsinline: 1, disablekb: 1, fs: 0, rel: 0 }, events: { onReady: () => { MU.ytReady = true; if (lastState) music(lastState.mus); }, onStateChange: () => { }, onError: () => { } } }); };
+  window.onYouTubeIframeAPIReady = () => { MU.yt = new YT.Player('ytp', { width: 2, height: 2, playerVars: { autoplay: 0, controls: 0, playsinline: 1, disablekb: 1, fs: 0, rel: 0, origin: location.origin }, events: { onReady: () => { MU.ytReady = true; if (lastState) music(lastState.on ? lastState.mus : null); }, onStateChange: e => { if (e.data === 1) { MU.since = 0; if (MU.blocked) blocked(false); } }, onError: () => { MU.id = ''; } } }); };
   const sc = document.createElement('script'); sc.src = 'https://www.youtube.com/iframe_api'; sc.onerror = () => { MU.ytLoading = false; }; document.head.append(sc);
 }
+// przeglądarka zablokowała dźwięk (zdarza się przy pierwszym utworze) — prośba o jedno dotknięcie
+function blocked(on) {
+  MU.blocked = !!on;
+  const t = $('#tap'); if (!t) return;
+  if (on && wantAudio && !localMute) { t.querySelector('b').textContent = 'Dotknij ekranu'; t.querySelector('p').textContent = 'Przeglądarka wstrzymała dźwięk — jedno dotknięcie włączy muzykę.'; t.hidden = false; }
+  else if (unlocked) t.hidden = true;
+}
+// wywoływane bezpośrednio w dotknięciu / naciśnięciu przycisku — wtedy przeglądarka zawsze pozwala włączyć dźwięk
+function kick() {
+  const st = lastState; if (!st || !st.on || !soundOn()) return;
+  const m = st.mus;
+  if (m && m.on && m.src === 'yt' && MU.ytReady && m.id) { try { if (MU.id !== m.id || MU.src !== 'yt') { MU.id = m.id; MU.src = 'yt'; MU.yt.loadVideoById({ videoId: m.id, startSeconds: (m.t || 0) + 0.6 }); } else MU.yt.playVideo(); MU.yt.unMute && MU.yt.unMute(); } catch { } }
+  else if (m && m.on && m.src !== 'yt' && m.src !== 'none') { const a = $('#aud'); a.muted = false; a.play().catch(() => { }); }
+  if (video && st.playing) { video.muted = !soundOn() || video._mute; video.play().catch(() => { }); }
+  MU.since = Date.now();
+}
 function music(m) {
-  const a = $('#aud'), play = soundOn() && m && m.on;
-  const stopYT = () => { if (MU.ytReady) try { if (MU.yt.getPlayerState() === 1) MU.yt.pauseVideo(); } catch { } };
-  if (!m || !m.src || m.src === 'none') { a.pause(); stopYT(); return; }
+  const a = $('#aud'), play = !!(soundOn() && m && m.on);
+  const stopYT = () => { if (MU.ytReady) try { const s = MU.yt.getPlayerState(); if (s === 1 || s === 3) MU.yt.pauseVideo(); } catch { } };
+  const watch = playing => { if (!play || playing) { MU.since = 0; if (MU.blocked && (!play || playing)) blocked(false); return; } if (!MU.since) MU.since = Date.now(); if (Date.now() - MU.since > 5000 && !MU.blocked) blocked(true); };
+  if (!m || !m.src || m.src === 'none') { a.pause(); stopYT(); watch(true); return; }
   if (m.src !== 'yt') stopYT();
   if (m.src === 'yt') {
-    a.pause(); if (!unlocked) return; ytApi(); if (!MU.ytReady || !m.id) return;
+    a.pause(); ytApi(); if (!MU.ytReady || !m.id) return;
     try {
-      if (MU.id !== m.id || MU.src !== 'yt') { MU.id = m.id; MU.src = 'yt'; MU.yt.loadVideoById({ videoId: m.id, startSeconds: (m.t || 0) + 1 }); if (!play) setTimeout(stopYT, 700); return; }
+      const target = (m.t || 0) + 0.6;
       MU.yt.setVolume(Math.round((m.vol || 0) * 100));
+      if (MU.id !== m.id || MU.src !== 'yt') {
+        MU.id = m.id; MU.src = 'yt'; MU.since = 0;
+        // utwór, który ma grać: od razu odtwarzaj; jeśli jeszcze nie — tylko przygotuj (bez krótkiego „mignięcia” dźwięku)
+        if (play) MU.yt.loadVideoById({ videoId: m.id, startSeconds: target }); else MU.yt.cueVideoById({ videoId: m.id, startSeconds: target });
+        return;
+      }
       const st = MU.yt.getPlayerState();
       if (play && st !== 1 && st !== 3) MU.yt.playVideo();
-      if (!play && st === 1) MU.yt.pauseVideo();
-      if (play && st === 1 && Math.abs((MU.yt.getCurrentTime() || 0) - ((m.t || 0) + 0.4)) > 3) MU.yt.seekTo((m.t || 0) + 0.8, true);
+      if (!play && (st === 1 || st === 3)) MU.yt.pauseVideo();
+      if (play && st === 1 && Math.abs((MU.yt.getCurrentTime() || 0) - target) > 3) MU.yt.seekTo(target, true);
+      watch(st === 1);
     } catch { }
     return;
   }
   const url = m.src === 'radio' ? `/api/r/radio?k=${encodeURIComponent(key)}&v=${encodeURIComponent(m.id)}` : `/api/r/music?k=${encodeURIComponent(key)}&v=${encodeURIComponent(m.id)}`;
-  if (MU.src !== m.src || MU.id !== m.id) { MU.src = m.src; MU.id = m.id; a.src = url; if (m.src === 'file') a.addEventListener('loadedmetadata', () => { try { a.currentTime = (m.t || 0) + 0.5; } catch { } }, { once: true }); }
+  if (MU.src !== m.src || MU.id !== m.id) { MU.src = m.src; MU.id = m.id; MU.since = 0; a.src = url; if (m.src === 'file') a.addEventListener('loadedmetadata', () => { try { a.currentTime = (m.t || 0) + 0.5; } catch { } }, { once: true }); }
   a.volume = Math.max(0, Math.min(1, m.vol || 0));
   if (play && a.paused) a.play().catch(() => { });
   if (!play && !a.paused) a.pause();
   if (play && m.src === 'file' && a.readyState >= 1 && Math.abs(a.currentTime - ((m.t || 0) + 0.3)) > 3) { try { a.currentTime = (m.t || 0) + 0.5; } catch { } }
+  watch(!a.paused);
 }
 function pinScreen(err) {
   msg(`<div class="pin"><b>Ekran pokazu</b><p>Wpisz kod widoczny w programie Pokazy na laptopie</p><input id="pin" inputmode="numeric" maxlength="4" autocomplete="off"><p style="color:#E2939A">${err || ''}</p><button id="go">Połącz</button></div>`);
   const i = $('#pin'); i.focus();
   const go = async () => { unlock(); try { const r = await fetchT('/api/tv/pin?c=' + encodeURIComponent(i.value.trim())); const d = await r.json(); if (d.ok) { key = d.k; try { localStorage.setItem('tvKey', key); } catch { } msg(''); loop(); } else pinScreen('Nieprawidłowy kod — sprawdź na laptopie.'); } catch { pinScreen('Brak połączenia z laptopem.'); } };
   $('#go').onclick = go; i.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+}
+// plik może być udostępniony ułamek sekundy później — kilka ponownych prób zamiast pustego ekranu
+function retry(el, url) {
+  let n = 0;
+  el.addEventListener('error', () => { if (++n > 8 || !el.isConnected) return; setTimeout(() => { if (!el.isConnected) return; const t = el.tagName === 'VIDEO' ? el.currentTime : 0; el.src = url() + '&r=' + n; if (el.tagName === 'VIDEO') { el.load(); if (lastState && lastState.playing) el.play().catch(() => { }); } }, 400 + n * 300); });
 }
 function swap(build) {
   const L = back; L.className = 'L'; L.replaceChildren(); build(L);
@@ -142,7 +172,7 @@ function render(st) {
   document.body.dataset.theme = st.theme || '';
   wantAudio = st.castAudio !== false;
   annSound(st);
-  $('#tap').hidden = unlocked || !wantAudio;
+  $('#tap').hidden = (unlocked && !MU.blocked) || !wantAudio;
   const an = $('#ann'); an.hidden = !st.ann; an.classList.toggle('brk', !!st.annBrk); $('#annT').textContent = st.ann || '';
   music(st.on ? st.mus : null);
   const c = st.cast;
@@ -158,15 +188,17 @@ function render(st) {
       const bg = document.createElement('div'); bg.className = 'bg'; L.append(bg);
       const m = document.createElement('div'); m.className = 'media' + (c.keys.length > 1 ? ' pair' : ''); L.append(m);
       c.keys.forEach((k, i) => {
-        if (c.kinds[i] === 'video') { const v = document.createElement('video'); v.src = media(k); v.playsInline = true; v.muted = !soundOn(); v.preload = 'auto'; m.append(v); video = v; bg.style.background = '#000'; }
-        else { const im = document.createElement('img'); im.src = media(k, 'disp'); if (c.rots && c.rots[i]) im.style.transform = `rotate(${c.rots[i]}deg)`; m.append(im); if (i === 0) bg.style.backgroundImage = `url("${media(k, 'disp')}")`; }
+        if (c.kinds[i] === 'video') { const v = document.createElement('video'); retry(v, () => media(k)); v.src = media(k); v.playsInline = true; v._mute = !!(c.mutes && c.mutes[i]); v.muted = !soundOn() || v._mute; v.preload = 'auto'; m.append(v); video = v; bg.style.background = '#000'; }
+        else { const im = document.createElement('img'); retry(im, () => media(k, 'disp')); im.src = media(k, 'disp'); if (c.rots && c.rots[i]) im.style.transform = `rotate(${c.rots[i]}deg)`; m.append(im); if (i === 0) bg.style.backgroundImage = `url("${media(k, 'disp')}")`; }
       });
     });
   }
   $('#cap').textContent = c.cap || '';
   if (video) {
-    video.muted = !soundOn();
-    if (st.playing && video.paused) video.play().catch(() => { video.muted = true; video.play().catch(() => { }); });
+    const vi = c.kinds ? c.kinds.indexOf('video') : -1;
+    video._mute = !!(c.mutes && c.mutes[vi]); video.muted = !soundOn() || video._mute;
+    if (c.vv && c.vv[vi] != null) video.volume = Math.max(0, Math.min(1, c.vv[vi]));
+    if (st.playing && video.paused) video.play().catch(() => { if (soundOn() && !video._mute) blocked(true); video.muted = true; video.play().catch(() => { }); });
     if (!st.playing && !video.paused) video.pause();
     if (typeof st.vt === 'number' && video.readyState >= 1 && Math.abs(video.currentTime - (st.vt + 0.3)) > 1.5) { try { video.currentTime = st.vt + 0.3; } catch { } }
   }
@@ -183,11 +215,12 @@ async function loop() {
   setTimeout(loop, 700);
 }
 function poke() { $('#btns').classList.add('show'); document.body.classList.remove('hidecur'); clearTimeout(window._bt); window._bt = setTimeout(() => { $('#btns').classList.remove('show'); document.body.classList.add('hidecur'); }, 3500); }
-document.addEventListener('pointerdown', () => { unlock(); poke(); }, true);
+document.addEventListener('pointerdown', () => { unlock(); kick(); poke(); }, true);
 document.addEventListener('mousemove', poke);
-document.addEventListener('keydown', e => { if (!$('#pin')) { unlock(); poke(); } if (e.key === 'm' || e.key === 'M') $('#snd').click(); });
+document.addEventListener('keydown', e => { if (!$('#pin')) { unlock(); kick(); poke(); } if (e.key === 'm' || e.key === 'M') $('#snd').click(); });
 $('#snd').onclick = e => { e.stopPropagation(); if (!unlocked) { unlock(); return; } localMute = !localMute; $('#snd').textContent = localMute ? '🔇 Dźwięk: wył.' : '🔊 Dźwięk: wł.'; if (video) video.muted = !soundOn(); if (lastState) music(lastState.mus); };
 $('#fs').onclick = e => { e.stopPropagation(); try { (document.fullscreenElement ? document.exitFullscreen() : (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen).call(document.documentElement)); } catch { } };
+ytApi();   // odtwarzacz muzyki gotowy, zanim pokaz się zacznie
 loop();
 </script>
 </body>

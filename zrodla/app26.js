@@ -15,11 +15,14 @@ async function castLobby(i) {
       <p><b>Telewizor:</b> otwórz przeglądarkę internetową i wpisz</p><p class="castaddr selectable" style="font-size:22px">${addr}</p><p>potem kod <b class="castpin">${info.tvPin || '—'}</b></p>
       <p class="hint"><b>Telefon / tablet / laptop:</b> zeskanuj kod QR obok — połączy się od razu, bez kodu.</p></div></div>
     <div class="castdev" id="clD"><p class="hint">Czekam na połączenie urządzenia…</p></div>
-    <label class="chk"><input type="checkbox" id="clA"> <span>🔊 Muzyka i dźwięk filmów z urządzenia bez kabla (laptop wtedy milknie)</span></label>
+    <div class="audsel"><span class="lbl">Skąd ma grać dźwięk — muzyka, filmy, ogłoszenia?</span>
+      <label class="audopt"><input type="radio" name="clA" value="dev"><span><b>📺 Z urządzenia bez kabla</b><small>telewizor, telefon albo tablet — laptop milknie</small></span></label>
+      <label class="audopt"><input type="radio" name="clA" value="pc"><span><b>💻 Z laptopa</b><small>urządzenie pokazuje tylko obraz (np. laptop podłączony do głośników)</small></span></label>
+      <small class="hint">Można to zmienić w każdej chwili w trakcie pokazu — przycisk „🔊 Dźwięk” w górnym pasku panelu.</small></div>
     <p class="hint">Telewizor i laptop muszą być w tej samej sieci Wi-Fi. Pokaz ruszy dopiero po „Rozpocznij pokaz”.</p>
     <div class="row" style="justify-content:flex-end"><button class="btn small ghost" data-close>Anuluj</button><button class="btn primary" id="clGo">▶ Rozpocznij pokaz</button></div>`;
   try { const q = qrcode(0, 'M'); q.addData(`${addr}#k=${Remote.token}`); q.make(); b.querySelector('#clQ').innerHTML = q.createSvgTag(5, 2); } catch { }
-  const ca = b.querySelector('#clA'); ca.checked = S.castAudio !== false; ca.onchange = () => { S.castAudio = ca.checked; saveS(); castAudioSync(); };
+  for (const r of b.querySelectorAll('input[name=clA]')) { r.checked = (S.castAudio !== false) === (r.value === 'dev'); r.onchange = () => setCastAudio(r.value === 'dev'); }
   const go = b.querySelector('#clGo');
   const paint = L => {
     const d = b.querySelector('#clD'); if (!d) return;
@@ -33,6 +36,27 @@ async function castLobby(i) {
   go.onclick = () => { clearInterval(iv); window.__cast = true; startShow(i, 'tv'); };
 }
 // w trakcie pokazu: liczba urządzeń; dźwięk z urządzenia → laptop milknie (tylko gdy coś jest podłączone)
+function setCastAudio(dev) {
+  S.castAudio = !!dev; saveS(); castAudioSync(); updCastAudBtn();
+  for (const r of $$('input[name=clA]')) r.checked = (S.castAudio !== false) === (r.value === 'dev');
+  if (Show.on) flash(dev ? '🔊 Dźwięk z urządzenia bez kabla' : '🔊 Dźwięk z laptopa');
+}
+// przycisk w górnym pasku panelu na laptopie (w trakcie pokazu bez kabla)
+function updCastAudBtn() {
+  let b = $('#castAudBtn');
+  const on = document.body.classList.contains('castmode') && Show.on;
+  if (!on) { if (b) b.remove(); return; }
+  if (!b) {
+    const st = $('#cStatus'); if (!st) return;
+    b = document.createElement('button'); b.id = 'castAudBtn'; b.className = 'btn small ghost'; b.type = 'button';
+    b.onclick = () => setCastAudio(S.castAudio === false);
+    st.after(b);
+  }
+  const dev = S.castAudio !== false, n = CASTC.list.length;
+  b.textContent = dev ? `🔊 Dźwięk: urządzenie${n ? '' : ' (brak połączenia — gra laptop)'}` : '🔊 Dźwięk: laptop';
+  b.title = 'Kliknij, aby przełączyć: dźwięk z urządzenia bez kabla albo z laptopa';
+}
+heartbeat(() => { if (Show.on && document.body.classList.contains('castmode')) updCastAudBtn(); else if ($('#castAudBtn')) $('#castAudBtn').remove(); });
 const castAudioOn = () => document.body.classList.contains('castmode') && S.castAudio !== false && CASTC.list.length > 0;
 let castAudioWas = false;
 function castAudioSync() {
@@ -44,7 +68,11 @@ heartbeat(async () => { if (!document.body.classList.contains('castmode') || Dat
 const applyMC = Music.apply.bind(Music);
 Music.apply = function () { applyMC(); if (castAudioOn()) { if (this.audio) this.audio.volume = 0; if (YTP.ready) try { YTP.player.setVolume(0); } catch { } } };
 const applyVVC = applyVideoVolume;
-applyVideoVolume = function (v, it) { applyVVC(v, it); if (v && !Show.forcedMute) v.muted = castAudioOn(); };
+applyVideoVolume = function (v, it) {
+  applyVVC(v, it); if (!v || Show.forcedMute) return;
+  if (castAudioOn()) { if (!v._castMuted) { v._showMuted = v.muted; v._castMuted = true; } v.muted = true; }
+  else if (v._castMuted) { v.muted = !!v._showMuted; v._castMuted = false; }
+};
 const exitShowCA = exitShow;
 exitShow = function (...a) { const r = exitShowCA.apply(this, a); castAudioWas = false; Music.apply(); return r; };
 // bieżąca muzyka dla urządzenia bez kabla (YouTube: film i miejsce; pliki: plik i miejsce; radio)
@@ -66,20 +94,3 @@ heartbeat(async () => {
   try { await fetch(`/native/castmusic?t=${NATIVE.token}`, { method: 'POST', body: JSON.stringify({ path, radio }) }); } catch { CM.sig = ''; }
 });
 
-// start
-Hist.last = JSON.stringify(O);
-bindSettings();
-bindExtraSettings();
-renderSidebar();
-renderTimeline();
-renderHeader();
-renderReopen();
-updUndoUI();
-updMVUI();
-updGReqUI();
-updProjUI();
-updGPUI();
-for (const P of Picker.inst) Picker.render(P);
-if (location.protocol === 'file:') $('#fileWarn').hidden = false;
-Remote.init();
-if (!NATIVE) offerRecovery();

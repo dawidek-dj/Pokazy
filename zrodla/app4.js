@@ -50,7 +50,8 @@ function unmuteForced() {
     Show.forcedMute = false;
     const it = currentItem();
     Show.video.muted = !!(it && it.live) || (S.musicOnVideo === 'mute' && Music.active());
-    if (!Show.video.muted && !Show.videoMusic) { Show.videoMusic = true; Music.videoStart(); }
+    if (typeof applyVideoVolume === 'function') applyVideoVolume(Show.video, it);
+    if ((!Show.video.muted || Show.video._castMuted) && !Show.videoMusic) { Show.videoMusic = true; Music.videoStart(); }
   }
 }
 function setVideoVol(frac) {

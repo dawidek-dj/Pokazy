@@ -225,19 +225,25 @@ function createAlbumer({ native, log = () => { } }) {
             if (it.kind === 'image') {
               let src = it.path; const d = native && await native.cacheFile(it.path, 'disp').catch(() => null); if (d) src = d;
               const eb = await sharp(await applyEdit(await sharp(src, { failOn: 'none', limitInputPixels: false }).rotate().toBuffer(), it.edit)).rotate(it.rot || 0).toBuffer();
-              await sharp(eb).resize(1920, 1920, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 86 }).toFile(path.join(root, 'zdjecia', n + '.jpg'));
+              const oi = await sharp(eb).resize(1920, 1920, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 86 }).toFile(path.join(root, 'zdjecia', n + '.jpg'));
+              it.r = oi.width && oi.height ? +(oi.width / oi.height).toFixed(3) : 1.5;
               await sharp(th || src, { failOn: 'none' }).rotate(it.rot || 0).resize(420, 420, { fit: 'inside' }).jpeg({ quality: 76 }).toFile(path.join(root, 'miniatury', n + '.jpg'));
-              list.push({ k: 'i', f: `zdjecia/${n}.jpg`, m: `miniatury/${n}.jpg`, p: it.part || '', t: it.time || '', c: it.cap || '', o: it.name });
+              list.push({ k: 'i', f: `zdjecia/${n}.jpg`, m: `miniatury/${n}.jpg`, p: it.part || '', t: it.time || '', c: it.cap || '', o: it.name, r: it.r, fav: !!it.fav });
             } else {
               const prep = native && await native.preparedPath(it.path, 3840).catch(() => null), src = prep || it.path, ext = prep ? '.mp4' : path.extname(it.path).toLowerCase();
               await fsp.copyFile(src, path.join(root, 'filmy', n + ext));
               if (th) await fsp.copyFile(th, path.join(root, 'miniatury', n + '.jpg'));
-              list.push({ k: 'v', f: `filmy/${n}${ext}`, m: th ? `miniatury/${n}.jpg` : '', p: it.part || '', t: it.time || '', c: it.cap || '', o: it.name });
+              let vr = 16 / 9; if (th) { try { const mm = await sharp(th).metadata(); if (mm.width && mm.height) vr = +(mm.width / mm.height).toFixed(3); } catch { } }
+              list.push({ k: 'v', f: `filmy/${n}${ext}`, m: th ? `miniatury/${n}.jpg` : '', p: it.part || '', t: it.time || '', c: it.cap || '', o: it.name, r: vr, fav: !!it.fav });
             }
           } catch (e) { log('album: pominięto', it.path, e.message); }
           J.done = i + 1;
         }
-        await fsp.writeFile(path.join(root, 'Otwórz album.html'), String(job.html || '').replace('/*__ALBUM__*/[]', JSON.stringify({ title: job.title, sub: job.sub || '', items: list })));
+        // strony albumu: galeria i/lub książka (te same zdjęcia, różny sposób oglądania)
+        const data = JSON.stringify({ title: job.title, sub: job.sub || '', items: list, pages: (job.pages || []).map(p => ({ file: p.file, label: p.label })) });
+        const pages = job.pages && job.pages.length ? job.pages : [{ file: 'Otwórz album.html', html: job.html }];
+        for (const pg of pages) await fsp.writeFile(path.join(root, String(pg.file).replace(/[\\/:*?"<>|]/g, '')), String(pg.html || '').replace('/*__ALBUM__*/[]', data));
+        J.files = pages.map(p => p.file);
         J.state = 'done';
       } catch (e) { J.state = 'error'; J.err = String(e.message || e); log('album', J.err); }
     })();

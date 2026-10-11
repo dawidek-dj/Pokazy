@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Album</title>
+<style>
+:root{--paper:#f7f1e5;--paper2:#efe6d4;--ink:#3a2e28;--muted:#8b7a6c;--gold:#b48c4c;--gold2:#d9b878}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:radial-gradient(ellipse at 50% 38%,#3b2b31 0%,#1a1215 70%,#100b0d 100%);color:var(--ink);font:16px/1.5 Georgia,'Times New Roman',serif;-webkit-tap-highlight-color:transparent}
+button{font:inherit;cursor:pointer}
+.stage{position:fixed;left:0;right:0;top:0;bottom:64px;display:grid;place-items:center;perspective:2800px}
+.book{position:relative;width:var(--bw);height:var(--bh);transform-style:preserve-3d}
+.book::after{content:'';position:absolute;left:4%;right:4%;bottom:-26px;height:30px;background:radial-gradient(ellipse at center,rgba(0,0,0,.55),transparent 70%);filter:blur(6px);z-index:-1}
+.pg{position:absolute;top:0;height:100%;background:linear-gradient(90deg,var(--paper2),var(--paper) 7%,var(--paper) 93%,var(--paper2));overflow:hidden}
+.two .pg.l{left:0;width:50%;border-radius:6px 0 0 6px;box-shadow:inset -22px 0 34px -20px rgba(0,0,0,.38)}
+.two .pg.r{left:50%;width:50%;border-radius:0 6px 6px 0;box-shadow:inset 22px 0 34px -20px rgba(0,0,0,.38)}
+.one .pg.r{left:0;width:100%;border-radius:4px 8px 8px 4px;box-shadow:inset 14px 0 22px -16px rgba(0,0,0,.35)}
+.one .pg.l{display:none}
+.pg.empty{background:transparent;box-shadow:none}
+.leaf{position:absolute;top:0;height:100%;transform-style:preserve-3d;z-index:6;display:none}
+.leaf.on{display:block}
+.leaf>.pg{width:100%!important;left:0!important;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.leaf>.back{transform:rotateY(180deg)}
+.leaf .shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.18),transparent 30%,transparent 70%,rgba(0,0,0,.1));opacity:0}
+/* treść stron */
+.in{position:absolute;inset:5% 7% 8%;display:flex;flex-direction:column;justify-content:center;gap:4%}
+.num{position:absolute;bottom:2.4%;left:0;right:0;text-align:center;font-size:12px;color:var(--muted);letter-spacing:.1em}
+.ph{display:flex;flex-direction:column;align-items:center;gap:6px;min-height:0;flex:1 1 0;justify-content:center}
+.ph .fr{position:relative;background:#fff;padding:2.4%;box-shadow:0 3px 10px rgba(60,40,30,.25),0 0 0 1px rgba(0,0,0,.04);max-width:100%;max-height:100%;display:flex;cursor:zoom-in;transform:rotate(var(--tilt,0deg))}
+.ph img{display:block;max-width:100%;object-fit:contain;background:#eee}
+.in.one .ph img{max-height:calc(var(--bh) * .72)}
+.in.col .ph img{max-height:calc(var(--bh) * .31)}
+.in.row .ph img{max-height:calc(var(--bh) * .62)}
+.in.col{gap:3%}
+.ph .play{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.ph .play b{width:56px;height:56px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:grid;place-items:center;font-size:24px;padding-left:4px}
+.ph figcaption{font-style:italic;font-size:13px;color:var(--muted);text-align:center;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none}
+.row2{display:flex;gap:5%;flex:1 1 0;min-height:0}
+.row2 .ph{flex:1 1 0;min-width:0}
+.chap{position:absolute;inset:0;display:grid;place-content:center;text-align:center;padding:10%;gap:14px}
+.chap small{letter-spacing:.3em;text-transform:uppercase;font-size:12px;color:var(--muted)}
+.chap h2{margin:0;font:italic 500 clamp(28px,4.4vmin,58px)/1.1 Georgia,serif;color:var(--ink)}
+.chap .orn{width:120px;height:14px;margin:0 auto;background:linear-gradient(var(--gold),var(--gold)) center/100% 1px no-repeat}
+.chap .orn::before{content:'❦';display:block;width:30px;margin:-4px auto 0;background:var(--paper);color:var(--gold);font-size:16px;line-height:1}
+.chap p{margin:0;color:var(--muted);font-size:14px}
+.cover{background:linear-gradient(135deg,#5b3a32,#3a221d 60%,#2a1714)!important;color:var(--gold2)}
+.cover .frame{position:absolute;inset:5%;border:2px solid rgba(217,184,120,.7);outline:1px solid rgba(217,184,120,.4);outline-offset:6px;border-radius:2px}
+.cover .ct{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:16px;padding:14%}
+.cover h1{margin:0;font:italic 500 clamp(30px,5.4vmin,70px)/1.1 Georgia,serif;color:var(--gold2);text-shadow:0 2px 6px rgba(0,0,0,.4)}
+.cover .cimg{width:62%;aspect-ratio:1;margin:0 auto;border-radius:50%;overflow:hidden;border:3px solid rgba(217,184,120,.8);box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.cover .cimg img{width:100%;height:100%;object-fit:cover}
+.cover p{margin:0;font-size:15px;color:rgba(240,220,180,.85);letter-spacing:.08em}
+.endp .chap h2{font-size:clamp(24px,3.6vmin,44px)}
+/* sterowanie */
+.bar{position:fixed;left:0;right:0;bottom:0;height:64px;display:flex;gap:10px;align-items:center;justify-content:center;padding:0 12px;color:#eadbc4;font:14px/1 system-ui,-apple-system,'Segoe UI',sans-serif}
+.bar button{color:#f1e4cf;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:9px 16px;white-space:nowrap}
+.bar button:hover{background:rgba(255,255,255,.16)}
+.bar button:disabled{opacity:.35;cursor:default}
+.bar .info{min-width:130px;text-align:center;color:#cdbba3}
+.toc{position:fixed;left:50%;bottom:72px;transform:translateX(-50%);width:min(420px,92vw);max-height:60vh;overflow:auto;background:#241a1d;border:1px solid rgba(217,184,120,.35);border-radius:14px;padding:8px;display:none;z-index:20;font:15px/1.3 system-ui,sans-serif}
+.toc.on{display:block}
+.toc button{display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;background:none;border:0;color:#f1e4cf;padding:10px 12px;border-radius:8px}
+.toc button:hover{background:rgba(255,255,255,.08)}.toc small{color:#b8a58c}
+.lb{position:fixed;inset:0;z-index:30;background:rgba(10,7,8,.96);display:none;grid-template-rows:1fr auto}
+.lb.on{display:grid}
+.lb .m{display:grid;place-items:center;min-height:0;padding:12px}
+.lb img,.lb video{max-width:100%;max-height:100%;object-fit:contain}
+.lb .t{display:flex;gap:10px;align-items:center;justify-content:center;padding:10px;color:#ddd;font:14px system-ui,sans-serif;flex-wrap:wrap}
+.lb .t span{flex:1 1 200px;text-align:center}
+.lb a,.lb button{color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:8px 16px;text-decoration:none;font:14px system-ui,sans-serif}
+@media (max-width:560px){.bar button{padding:9px 12px}.bar .hide-s{display:none}.bar .info{min-width:80px}}
+</style>
+</head>
+<body>
+<div class="stage"><div class="book" id="book">
+  <div class="pg l" id="L"></div><div class="pg r" id="R"></div>
+  <div class="leaf" id="leaf"><div class="pg front" id="LF"></div><div class="pg back" id="LB"></div><div class="shade"></div></div>
+</div></div>
+<div class="toc" id="toc"></div>
+<div class="bar">
+  <button id="prev">‹ <span class="hide-s">Poprzednia</span></button>
+  <span class="info" id="info"></span>
+  <button id="next"><span class="hide-s">Następna</span> ›</button>
+  <button id="tocB">📑 <span class="hide-s">Spis</span></button>
+  <button id="fsB" class="hide-s">⛶</button>
+  <button id="galB" hidden>▦ <span class="hide-s">Galeria</span></button>
+</div>
+<div class="lb" id="lb"><div class="m" id="lbm"></div><div class="t"><button id="lbp">‹</button><span id="lbt"></span><a id="lbd" download>⬇ Pobierz</a><button id="lbn">›</button><button id="lbx">✕ Zamknij</button></div></div>
+<script>
+'use strict';
+const A = /*__ALBUM__*/[];
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+document.title = A.title || 'Album';
+const items = A.items || [];
+// ---- strony: okładka, rozdziały (części), zdjęcia po 1–2 na stronę, zakończenie
+const pages = [];
+const coverIt = items.find(x => x.fav && x.k === 'i') || items.find(x => x.k === 'i');
+pages.push({ type: 'cover' });
+let part = null, chapNo = 0;
+const chapters = [];
+for (let i = 0; i < items.length; i++) {
+  const it = items[i];
+  if (it.p !== part) {
+    part = it.p;
+    if (part) { chapNo++; const cnt = items.filter(x => x.p === part).length; chapters.push({ title: part, page: pages.length }); pages.push({ type: 'chap', title: part, no: chapNo, cnt, time: it.t }); }
+  }
+  const nx = items[i + 1], r = it.r || 1.5, rn = nx && (nx.r || 1.5);
+  if (nx && nx.p === it.p && r < 0.9 && rn < 0.9) { pages.push({ type: 'two', a: i, b: i + 1, dir: 'row' }); i++; }
+  else if (nx && nx.p === it.p && r > 1.2 && rn > 1.2) { pages.push({ type: 'two', a: i, b: i + 1, dir: 'col' }); i++; }
+  else pages.push({ type: 'one', a: i });
+}
+pages.push({ type: 'end' });
+const tilt = i => ((i * 7919) % 5 - 2) * 0.35;   // delikatnie nierówno wklejone zdjęcia — jak w prawdziwym albumie
+function fig(i) {
+  const it = items[i]; if (!it) return '';
+  const cap = [it.t, it.c].filter(Boolean).join(' · ');
+  return `<figure class="ph" style="margin:0"><div class="fr" data-i="${i}" style="--tilt:${tilt(i)}deg"><img data-src="${esc(it.k === 'v' ? (it.m || '') : it.f)}" alt="">${it.k === 'v' ? '<span class="play"><b>▶</b></span>' : ''}</div>${cap ? `<figcaption>${esc(cap)}</figcaption>` : ''}</figure>`;
+}
+function pageHTML(n) {
+  const p = pages[n]; if (!p) return { cls: 'empty', html: '' };
+  const num = n > 0 && p.type !== 'end' ? `<div class="num">${n}</div>` : '';
+  if (p.type === 'cover') return { cls: 'cover', html: `<div class="frame"></div><div class="ct"><h1>${esc(A.title || 'Album')}</h1>${coverIt ? `<div class="cimg"><img data-src="${esc(coverIt.f)}" alt=""></div>` : ''}<p>${esc(A.sub || '')}</p></div>` };
+  if (p.type === 'chap') return { cls: '', html: `<div class="chap"><small>Rozdział ${p.no}</small><h2>${esc(p.title)}</h2><div class="orn"></div><p>${p.cnt} ${p.cnt === 1 ? 'zdjęcie' : (p.cnt % 10 >= 2 && p.cnt % 10 <= 4 && (p.cnt % 100 < 10 || p.cnt % 100 >= 20)) ? 'zdjęcia' : 'zdjęć'}${p.time ? ' · od ' + esc(p.time) : ''}</p></div>${num}` };
+  if (p.type === 'end') return { cls: 'endp', html: `<div class="chap"><small>Koniec</small><h2>${esc(A.title || 'Album')}</h2><div class="orn"></div><p>${items.length} zdjęć i filmów</p><p style="font-size:12px">Album przygotowany w programie Pokazy — otwiera się w każdej przeglądarce, bez internetu.</p></div>` };
+  if (p.type === 'one') return { cls: '', html: `<div class="in one">${fig(p.a)}</div>${num}` };
+  return { cls: '', html: p.dir === 'row' ? `<div class="in row"><div class="row2">${fig(p.a)}${fig(p.b)}</div></div>${num}` : `<div class="in col">${fig(p.a)}${fig(p.b)}</div>${num}` };
+}
+function fill(el, n) {
+  const h = pageHTML(n);
+  el.className = el.className.replace(/\b(cover|endp|empty)\b/g, '').trim() + (h.cls ? ' ' + h.cls : '');
+  el.innerHTML = h.html;
+  for (const im of el.querySelectorAll('img[data-src]')) if (im.dataset.src) im.src = im.dataset.src;
+}
+// wczytywanie z wyprzedzeniem: kolejne strony gotowe, zanim się je przewróci
+function preload(from) { for (let n = from; n < from + 6 && n < pages.length; n++) { const h = pageHTML(n).html; for (const m of h.matchAll(/data-src="([^"]+)"/g)) { const i = new Image(); i.src = m[1].replace(/&amp;/g, '&'); } } }
+// ---- układ: dwie strony obok siebie (szeroki ekran) albo jedna (telefon w pionie)
+let two = true, s = 0, busy = false;
+const book = $('#book');
+function layout() {
+  const W = innerWidth, H = innerHeight - 64;
+  two = W >= 760 && W / H > 1.05;
+  book.classList.toggle('two', two); book.classList.toggle('one', !two);
+  const pr = 0.74;   // proporcje strony (szer./wys.)
+  let bh = H * 0.92, bw = bh * pr * (two ? 2 : 1);
+  if (bw > W * 0.96) { bw = W * 0.96; bh = bw / (pr * (two ? 2 : 1)); }
+  book.style.setProperty('--bw', bw + 'px'); book.style.setProperty('--bh', bh + 'px');
+}
+// w trybie dwóch stron: rozkładówka s → lewa = strona 2s−1, prawa = 2s (okładka sama po prawej)
+const maxS = () => two ? Math.floor(pages.length / 2) : pages.length - 1;
+const leftOf = k => two ? 2 * k - 1 : -1, rightOf = k => two ? 2 * k : k;
+function render() {
+  fill($('#L'), leftOf(s)); fill($('#R'), rightOf(s));
+  if (two && s === 0) $('#L').classList.add('empty');
+  if (two && rightOf(s) >= pages.length) $('#R').classList.add('empty');
+  const a = leftOf(s), b = rightOf(s);
+  $('#info').textContent = two ? (s === 0 ? 'Okładka' : `Strony ${Math.max(1, a)}–${Math.min(b, pages.length - 1)} z ${pages.length - 1}`) : (s === 0 ? 'Okładka' : `Strona ${s} z ${pages.length - 1}`);
+  $('#prev').disabled = s <= 0; $('#next').disabled = s >= maxS();
+  preload(b + 1);
+  try { history.replaceState(null, '', '#s' + (two ? b : s)); } catch { }
+}
+function flip(dir) {
+  if (busy) return;
+  const t = s + dir; if (t < 0 || t > maxS()) return;
+  busy = true;
+  const leaf = $('#leaf'), F = $('#LF'), B = $('#LB'), shade = leaf.querySelector('.shade');
+  const fwd = dir > 0;
+  // liść = przewracana kartka; pod spodem już widać kolejne strony
+  if (two) {
+    leaf.style.left = fwd ? '50%' : '0'; leaf.style.width = '50%';
+    leaf.style.transformOrigin = fwd ? '0 50%' : '100% 50%';
+    fill(F, fwd ? rightOf(s) : leftOf(s)); fill(B, fwd ? leftOf(t) : rightOf(t));
+    F.className = 'pg front ' + (F.className.match(/cover|endp|empty/g) || []).join(' ') + (fwd ? ' r' : ' l'); B.className = 'pg back ' + (B.className.match(/cover|endp|empty/g) || []).join(' ') + (fwd ? ' l' : ' r');
+    if (fwd) fill($('#R'), rightOf(t)); else fill($('#L'), leftOf(t));
+    if (fwd && rightOf(t) >= pages.length) $('#R').classList.add('empty');
+    if (!fwd && t === 0) $('#L').classList.add('empty');
+    if (fwd && s === 0) {}
+  } else {
+    leaf.style.left = '0'; leaf.style.width = '100%'; leaf.style.transformOrigin = '0 50%';
+    fill(F, fwd ? s : t); fill(B, -1); B.classList.remove('empty');
+    if (fwd) fill($('#R'), t);
+  }
+  leaf.style.transition = 'none'; leaf.style.transform = fwd || !two ? (fwd ? 'rotateY(0deg)' : 'rotateY(-180deg)') : 'rotateY(0deg)';
+  leaf.classList.add('on'); void leaf.offsetWidth;
+  leaf.style.transition = 'transform .85s cubic-bezier(.45,.05,.2,1)';
+  shade.style.transition = 'opacity .85s'; shade.style.opacity = '1';
+  leaf.style.transform = two ? (fwd ? 'rotateY(-180deg)' : 'rotateY(180deg)') : (fwd ? 'rotateY(-180deg)' : 'rotateY(0deg)');
+  const done = () => { leaf.classList.remove('on'); shade.style.opacity = '0'; s = t; render(); busy = false; };
+  let fired = false; const end = () => { if (fired) return; fired = true; done(); };
+  leaf.addEventListener('transitionend', end, { once: true }); setTimeout(end, 1100);
+}
+$('#next').onclick = () => flip(1); $('#prev').onclick = () => flip(-1);
+// kliknięcie w pustą część strony: prawa — dalej, lewa — wstecz; w zdjęcie — powiększenie
+book.addEventListener('click', e => {
+  const f = e.target.closest('.fr'); if (f) { openLb(+f.dataset.i); return; }
+  const r = book.getBoundingClientRect(); flip(e.clientX > r.left + r.width / 2 ? 1 : -1);
+});
+let x0 = null; book.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+book.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 45) { e.preventDefault(); flip(dx < 0 ? 1 : -1); } });
+// spis treści
+const toc = $('#toc');
+toc.innerHTML = `<button data-p="0"><span>Okładka</span><small></small></button>` + chapters.map(c => `<button data-p="${c.page}"><span>${esc(c.title)}</span><small>str. ${c.page}</small></button>`).join('');
+$('#tocB').onclick = e => { e.stopPropagation(); toc.classList.toggle('on'); };
+toc.onclick = e => { const b = e.target.closest('[data-p]'); if (!b) return; const p = +b.dataset.p; s = two ? Math.ceil(p / 2) : p; render(); toc.classList.remove('on'); };
+document.addEventListener('click', e => { if (!e.target.closest('#toc') && !e.target.closest('#tocB')) toc.classList.remove('on'); });
+$('#fsB').onclick = () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch { } };
+const gal = (A.pages || []).find(p => /album/i.test(p.file) && !/książ|ksiaz/i.test(p.file));
+if (gal) { $('#galB').hidden = false; $('#galB').onclick = () => { location.href = encodeURI(gal.file); }; }
+// powiększenie zdjęcia / film
+let cur = -1;
+function openLb(i) {
+  const it = items[i]; if (!it) return; cur = i;
+  const m = $('#lbm'); m.replaceChildren();
+  const el = document.createElement(it.k === 'v' ? 'video' : 'img'); el.src = it.f; if (it.k === 'v') { el.controls = true; el.autoplay = true; el.playsInline = true; }
+  m.append(el);
+  $('#lbt').textContent = [it.p, it.t, it.c].filter(Boolean).join(' · ');
+  const d = $('#lbd'); d.href = it.f; d.download = it.o || '';
+  $('#lb').classList.add('on');
+}
+function closeLb() { $('#lb').classList.remove('on'); $('#lbm').replaceChildren(); }
+$('#lbx').onclick = closeLb; $('#lbp').onclick = () => openLb(cur - 1); $('#lbn').onclick = () => openLb(cur + 1);
+$('#lb').addEventListener('click', e => { if (e.target.id === 'lb' || e.target.id === 'lbm') closeLb(); });
+addEventListener('keydown', e => {
+  if ($('#lb').classList.contains('on')) { if (e.key === 'Escape') closeLb(); if (e.key === 'ArrowLeft') openLb(cur - 1); if (e.key === 'ArrowRight') openLb(cur + 1); return; }
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); flip(1); }
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); flip(-1); }
+  if (e.key === 'Home') { s = 0; render(); } if (e.key === 'End') { s = maxS(); render(); }
+  if (e.key === 'Escape') toc.classList.remove('on');
+});
+addEventListener('resize', () => { const p = two ? rightOf(s) : s; layout(); s = two ? Math.ceil(p / 2) : p; s = Math.min(s, maxS()); render(); });
+layout();
+{ const h = +(location.hash.match(/^#s(\d+)/) || [])[1]; if (h) s = Math.min(maxS(), two ? Math.ceil(h / 2) : h); }
+render();
+</script>
+</body>
+</html>

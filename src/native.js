@@ -124,10 +124,12 @@ function createNative({ cacheDir, ffmpegPath, log = () => { } }) {
   }
   async function cacheFile(p, kind, max) {
     const st = await fsp.stat(p), k = keyOf(p, st);
-    if (kind === 'thumb') { const f = cp('thumbs', k, '.jpg'); return (await exists(f)) ? f : null; }
+    // brak miniatury (np. ten sam plik w innym folderze albo wyczyszczona pamięć podręczna) — tworzona od razu, na żądanie
+    if (kind === 'thumb') { const f = cp('thumbs', k, '.jpg'); if (await exists(f)) return f; try { await analyze(p); } catch { } return (await exists(f)) ? f : null; }
     if (kind !== 'disp') return null;
     // najpierw w żądanym rozmiarze, potem dowolna gotowa wersja
     for (const f of [max && cp('disp', `${k}_${max}`, '.jpg'), cp('disp', `${k}_3840`, '.jpg'), cp('disp', `${k}_1920`, '.jpg'), cp('disp', k, '.jpg')].filter(Boolean)) if (await exists(f)) return f;
+    if (max) { try { await ensureDisp(p, max); } catch { } for (const f of [cp('disp', `${k}_${max}`, '.jpg'), cp('disp', k, '.jpg')]) if (await exists(f)) return f; }   // wersja do pokazu — też na żądanie
     return null;
   }
   // przygotuj wersję zdjęcia w danym rozmiarze (gdy trzeba) — wywoływane w kolejności pokazu

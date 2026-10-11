@@ -532,6 +532,7 @@ function computeTimeline() {
     if (it.how === 'unplaced' && !S.includeUnplaced) inShow = false;
     if (h === true) inShow = false; else if (h === false) inShow = true;
     if (anyFav && !(O[it.key] || {}).fav) inShow = false;
+    { const sp = (O[it.key] || {}).surprise; if (sp && (S.surprises || []).some(x => x.id === sp)) inShow = false; }   // niespodzianka: czeka poza zwykłym pokazem
     it.inShow = inShow;
   }
   order = ready.slice().sort((a, b) => a.t - b.t || a.name.localeCompare(b.name, 'pl', { numeric: true }));

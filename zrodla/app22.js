@@ -53,9 +53,9 @@ main{max-width:1400px;margin:0 auto;padding:10px 16px 60px}h2{font:italic 500 28
 .lb img,.lb video{max-width:100%;max-height:100%;object-fit:contain}.lb .b{display:flex;gap:10px;justify-content:center;padding:12px}
 button,.lb a{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 18px;cursor:pointer;text-decoration:none}
 footer{text-align:center;color:var(--muted);font-size:13px;padding:20px}</style></head><body>
-<header><h1 id="h"></h1><p id="s"></p></header><main id="g"></main><footer>Album przygotowany w programie Pokazy — otwiera się w każdej przeglądarce, bez internetu.</footer>
+<header><h1 id="h"></h1><p id="s"></p><p id="bk"></p></header><main id="g"></main><footer>Album przygotowany w programie Pokazy — otwiera się w każdej przeglądarce, bez internetu.</footer>
 <div class="lb" id="lb"><div class="t"><span id="lt"></span><button id="lx">✕</button></div><div class="m" id="lm"></div><div class="b"><button id="lp">‹ Poprzednie</button><a id="ld" download>⬇ Pobierz</a><button id="ln">Następne ›</button></div></div>
-<script>const A=/*__ALBUM__*/[];document.title=A.title||'Album';document.getElementById('h').textContent=A.title||'Album';document.getElementById('s').textContent=A.sub||'';
+<script>const A=/*__ALBUM__*/[];document.title=A.title||'Album';document.getElementById('h').textContent=A.title||'Album';document.getElementById('s').textContent=A.sub||'';{const b=(A.pages||[]).find(p=>/książ|ksiaz/i.test(p.file));if(b){const a=document.createElement('a');a.href=encodeURI(b.file);a.textContent='📖 Otwórz jako książkę';a.style.cssText='display:inline-block;margin-top:8px;color:#edd4a0;border:1px solid #6b5640;border-radius:999px;padding:7px 16px;text-decoration:none';document.getElementById('bk').append(a)}}
 const g=document.getElementById('g');let part=null,grid=null;A.items.forEach((it,i)=>{if(it.p!==part||!grid){part=it.p;if(part){const h=document.createElement('h2');h.textContent=part;g.append(h)}grid=document.createElement('div');grid.className='g';g.append(grid)}
 const a=document.createElement('a');a.href=it.f;a.onclick=e=>{e.preventDefault();show(i)};const im=document.createElement('img');im.loading='lazy';im.src=it.m||it.f;im.alt='';a.append(im);if(it.k==='v'){const x=document.createElement('i');x.textContent='▶ film';a.append(x)}grid.append(a)});
 let cur=-1;const lb=document.getElementById('lb'),lm=document.getElementById('lm');function show(i){if(i<0||i>=A.items.length)return;cur=i;const it=A.items[i];lm.replaceChildren();const el=document.createElement(it.k==='v'?'video':'img');el.src=it.f;if(it.k==='v'){el.controls=true;el.autoplay=true;el.playsInline=true}lm.append(el);
@@ -163,16 +163,25 @@ Music.prev = function (...a) { if (S.musicSource === 'radio') return; return pre
    Ekran bez kabla: telewizor z przeglądarką (Smart TV) wyświetla pokaz przez Wi-Fi
    ========================================================= */
 const CAST = { sig: '' };
-heartbeat(async () => {
-  if (!NATIVE || !Show.on || !Remote.ok || !Remote.clients) return;
-  const sig = slides.length + ':' + Show.idx; if (sig === CAST.sig) return; CAST.sig = sig;
+// pliki bieżącego i kolejnych slajdów udostępniane urządzeniu bez kabla — ZANIM pokaz przejdzie na nowy slajd
+const castOn = () => NATIVE && Show.on && (document.body.classList.contains('castmode') || Remote.clients > 0);
+async function castMediaPost(from) {
+  if (!castOn()) return;
+  const sig = slides.length + ':' + from; if (sig === CAST.sig) return; CAST.sig = sig;
   const list = [];
-  for (let j = Show.idx; j < Math.min(slides.length, Show.idx + 4); j++) for (const it of (slides[j].items || [])) if (it.file && it.file.native) list.push({ key: it.key, path: it.file.fullPath, kind: it.kind });
+  for (let j = Math.max(0, from - 1); j < Math.min(slides.length, from + 5); j++) for (const it of (slides[j].items || [])) if (it.file && it.file.native) list.push({ key: it.key, path: it.file.fullPath, kind: it.kind });
   try { await fetch(`/native/castmedia?t=${NATIVE.token}`, { method: 'POST', body: JSON.stringify({ items: list }) }); } catch { CAST.sig = ''; }
-});
+}
+heartbeat(() => { if (castOn()) castMediaPost(Show.idx); });
+const gotoCM = goto;
+goto = function (i, ...a) { if (castOn() && slides.length) castMediaPost(Math.max(0, Math.min(+i || 0, slides.length - 1))); return gotoCM.call(this, i, ...a); };
 function castState() {
   const s = Show.on && slides[Show.idx]; if (!s) return null;
-  if (s.items) return { keys: s.items.map(x => x.key), kinds: s.items.map(x => x.kind), rots: s.items.map(x => (O[x.key] || {}).rot || 0), cap: captionFor(s.items[0]) };
+  if (s.items) return {
+    keys: s.items.map(x => x.key), kinds: s.items.map(x => x.kind), rots: s.items.map(x => (O[x.key] || {}).rot || 0), cap: captionFor(s.items[0]),
+    mutes: s.items.map(x => !!x.live || (S.musicOnVideo === 'mute' && Music.active())),
+    vv: s.items.map(x => Math.max(0, Math.min(1, S.videoVol / 100 * volOf(x) * (typeof loudGainLin === 'function' ? loudGainLin(x) : 1)))),
+  };
   const card = { type: s.type };
   if (s.type === 'chapter') { const d = dayList[s.day]; card.title = d ? d.label : ''; card.sub = d ? new Date(d.start).toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : ''; }
   else if (s.type === 'title' || s.type === 'end') { card.title = S.names.trim() || projName(); card.sub = s.type === 'end' ? 'Dziękujemy, że byliście z nami' : ''; }

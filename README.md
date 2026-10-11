@@ -29,3 +29,5 @@ Jak zbudować nową wersję: zobacz **PORADNIK.md**.
 - `src/` — aplikacja (okna, serwer, obróbka zdjęć i filmów, aktualizacje)
 - `zrodla/` — strona pokazu (źródła); `python zrodla/build.py web --app` składa ją do folderu `web/`
 - `.github/workflows/build.yml` — automatyczna budowa instalatora i wersji przenośnej
+
+Niespodzianki o wyznaczonej godzinie (albo z pilota), album-książka z przewracanymi stronami, wybór źródła dźwięku w pokazie bez kabla.

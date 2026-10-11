@@ -230,6 +230,11 @@ svg{width:26px;height:26px}
     </div>
   </div>
 
+  <div class="sec" id="spsec" hidden>
+    <span class="lbl">🎁 Niespodzianki</span>
+    <div id="spList" style="display:grid;gap:8px"></div>
+  </div>
+
   <div class="sec" id="mvsec">
     <span class="lbl">Teledysk na telewizorze</span>
     <div id="mvOn" hidden style="display:grid;gap:8px">
@@ -497,6 +502,27 @@ $('#rvUndo').onclick = () => { const u = RVP.undo.pop(); if (!u) return; const i
     if (dy < -90 && Math.abs(dy) > Math.abs(dx)) rvDo('fav'); else if (dx > 90) rvDo('keep'); else if (dx < -90) rvDo('hide'); else { card.style.transform = ''; $('#rvTag').style.opacity = 0; }
   });
 })();
+// ---- niespodzianki: „Pokaż teraz” (drugie dotknięcie potwierdza)
+const SPP = { armed: '', t: 0, sig: '' };
+function renderSurp(list) {
+  const sec = $('#spsec'); sec.hidden = !list.length; if (!list.length) return;
+  const sig = JSON.stringify(list) + SPP.armed; if (sig === SPP.sig) return; SPP.sig = sig;
+  const box = $('#spList'); box.replaceChildren();
+  for (const sp of list) {
+    const b = document.createElement('button'); b.style.cssText = 'min-height:52px;font-size:16px;display:grid;gap:2px;text-align:left;padding:10px 14px';
+    const armed = SPP.armed === sp.id && Date.now() - SPP.t < 4000;
+    b.innerHTML = '<b></b><small></small>';
+    b.querySelector('b').textContent = armed ? '👉 Dotknij jeszcze raz, aby pokazać teraz' : `▶ ${sp.name}`;
+    b.querySelector('small').textContent = `${sp.n} ${sp.n === 1 ? 'plik' : (sp.n % 10 >= 2 && sp.n % 10 <= 4 && (sp.n % 100 < 10 || sp.n % 100 >= 20)) ? 'pliki' : 'plików'} · ${sp.info}`;
+    if (armed) b.classList.add('play');
+    b.onclick = () => {
+      if (SPP.armed === sp.id && Date.now() - SPP.t < 4000) { SPP.armed = ''; send('surprise', '', sp.id); }
+      else { SPP.armed = sp.id; SPP.t = Date.now(); setTimeout(() => { if (SPP.armed === sp.id && Date.now() - SPP.t >= 4000) { SPP.armed = ''; SPP.sig = ''; if (last && last.state) renderSurp(last.state.surp || []); } }, 4100); }
+      SPP.sig = ''; renderSurp(list);
+    };
+    box.append(b);
+  }
+}
 function renderNext(list) {
   const w = $('#nxWrap'), box = $('#nxs'), sig = list.map(n => n.i + n.key + n.ready).join('|');
   w.hidden = !list.length; if (box.dataset.sig === sig) return; box.dataset.sig = sig; box.replaceChildren();
@@ -617,6 +643,7 @@ function render(d) {
   $('#thumb').dataset.k = s.tkey || '';
   renderNext(s.next || []);
   tabletTL(s);
+  renderSurp(s.surp || []);
   $('#pNote').hidden = !s.note; $('#pNote').textContent = s.note ? '📝 ' + s.note : '';
   $('#retInfo').hidden = !s.returnTo; if (s.returnTo) $('#retInfo').textContent = `▶ Pokazane poza kolejnością — potem pokaz wraca do slajdu ${s.returnTo}`;
   $('#bSkipCur').hidden = isCard; $('#bSkipCur').textContent = s.curSkip ? '↩ Pokaż ten slajd ponownie w kolejce' : '⊘ Nie pokazuj tego slajdu ponownie w kolejce';

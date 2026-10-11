@@ -147,7 +147,7 @@ function openSeries() {
     const r = document.createElement('button'); r.className = 'serrow';
     const keep = g.filter(x => x.inShow).length;
     r.innerHTML = `<span class="strip"></span><span class="meta"><b>${g.length} ujęć · ${fmtHM(g[0].t)}</b><small>w pokazie: ${keep} · ${String(g[0].device || '').replace(/^Folder: /, '')}</small></span><span class="go">Porównaj ›</span>`;
-    for (const x of g.slice(0, 8)) { const im = document.createElement('img'); im.src = x.thumbURL || ''; im.alt = ''; r.querySelector('.strip').append(im); }
+    for (const x of g.slice(0, 8)) { const im = document.createElement('img'); im.alt = ''; if (x.thumbURL) im.src = x.thumbURL; else ensureThumbURL(x).then(u => { if (u) im.src = u; }).catch(() => { }); r.querySelector('.strip').append(im); }
     r.onclick = () => openSeriesCompare(g);
     L.append(r);
   });
@@ -156,16 +156,19 @@ function openSeriesCompare(g) {
   const b = openModal(); b.classList.add('wide');
   const sel = new Set(g.filter(x => x.inShow).map(x => x.key));
   if (!sel.size) sel.add(g[0].key);
-  b.innerHTML = `<h3>Porównaj i zostaw najlepsze</h3><p class="hint">Kliknij zdjęcie, żeby je zaznaczyć do pokazu (możesz zostawić kilka). 🔍 — powiększ i przejrzyj dokładnie.</p><div class="sercmp" id="scG"></div>
+  b.innerHTML = `<h3>Porównaj i zostaw najlepsze</h3><p class="hint">Kliknij zdjęcie, żeby je zaznaczyć do pokazu (możesz zostawić kilka). 🔍 albo dwuklik — otwórz na cały ekran i przybliżaj kółkiem myszy.</p><div class="sercmp" id="scG"></div>
     <div class="row" style="justify-content:space-between;flex-wrap:wrap"><button class="btn small ghost" id="scBack">‹ Wszystkie serie</button><button class="btn small primary" id="scOk"></button></div>`;
   const G = b.querySelector('#scG'), ok = b.querySelector('#scOk');
   const upd = () => { for (const c of G.children) c.classList.toggle('on', sel.has(c.dataset.key)); ok.textContent = `Zostaw zaznaczone (${sel.size}) · schowaj resztę (${g.length - sel.size})`; ok.disabled = !sel.size; };
   g.forEach((x, i) => {
     const c = document.createElement('div'); c.className = 'sccard'; c.dataset.key = x.key;
     c.innerHTML = `<img alt=""><span class="sct"><b></b><small></small></span><button class="zbtn" title="Powiększ">🔍</button><span class="chk">✓</span>`;
-    const im = c.querySelector('img'); im.src = x.thumbURL || ''; displayURL(x).then(u => { im.src = u; }).catch(() => { });
+    const im = c.querySelector('img'); let full = false;
+    ensureThumbURL(x).then(u => { if (u && !full) im.src = u; }).catch(() => { });
+    displayURL(x).then(u => { if (!u) return; const pre = new Image(); pre.onload = () => { full = true; im.src = u; }; pre.src = u; }).catch(() => { });
     c.querySelector('b').textContent = fmtHM(x.t) + ((O[x.key] || {}).fav ? ' ★' : ''); c.querySelector('small').textContent = x.name;
     c.onclick = e => { if (e.target.closest('.zbtn')) { zoomViewer(g, i, sel, upd); return; } sel.has(x.key) ? sel.delete(x.key) : sel.add(x.key); upd(); };
+    c.ondblclick = e => { e.preventDefault(); sel.has(x.key) ? sel.delete(x.key) : sel.add(x.key); upd(); zoomViewer(g, i, sel, upd); };
     G.append(c);
   });
   b.querySelector('#scBack').onclick = openSeries;
@@ -176,29 +179,58 @@ function openSeriesCompare(g) {
   };
   upd();
 }
-// powiększanie: kółko myszy (wokół kursora), przeciąganie, podwójne kliknięcie — 100% / dopasuj, ← → między zdjęciami serii
+// podgląd zdjęcia z serii: najpierw całe zdjęcie dopasowane do ekranu (jak w pokazie), kółko myszy — przybliż / oddal wokół kursora,
+// przeciąganie — przesuwanie, dwuklik — 100% / dopasuj, + / − / 0 z klawiatury, ← → między zdjęciami serii
 function zoomViewer(g, i, sel, upd) {
   const v = document.createElement('div'); v.className = 'zv';
-  v.innerHTML = `<div class="zv-top"><span></span><button data-z="keep"></button><button data-z="only">★ Zostaw tylko to</button><button data-z="x">✕</button></div><div class="zv-st"><img alt=""></div><div class="zv-nav"><button data-z="prev">‹</button><small>kółko — powiększ · przeciągnij — przesuń · dwuklik — 100% / dopasuj · ← →</small><button data-z="next">›</button></div>`;
+  v.innerHTML = `<div class="zv-top"><span class="zv-name"></span><b class="zv-pct"></b><button data-z="keep"></button><button data-z="only">★ Zostaw tylko to</button><button data-z="x">✕ Zamknij</button></div><div class="zv-st"><img alt="" draggable="false"></div><div class="zv-nav"><button data-z="prev">‹ Poprzednie</button><button data-z="out">−</button><button data-z="fit">Całe zdjęcie</button><button data-z="in">+</button><button data-z="next">Następne ›</button></div><div class="zv-help">kółko myszy — przybliż / oddal · przeciągnij — przesuń · dwuklik — 100% / całe · ← → — kolejne zdjęcie · Esc — zamknij</div>`;
   document.body.append(v);
   const st = v.querySelector('.zv-st'), im = v.querySelector('img');
   let z = 1, tx = 0, ty = 0, drag = null;
-  const apply = () => { im.style.transform = `translate(${tx}px, ${ty}px) scale(${z})`; };
-  const show = j => { i = (j + g.length) % g.length; const x = g[i]; z = 1; tx = ty = 0; apply(); im.src = x.thumbURL || ''; displayURL(x).then(u => { if (g[i] === x) im.src = u; }); v.querySelector('.zv-top span').textContent = `${i + 1} / ${g.length} · ${fmtHM(x.t)} · ${x.name}`; v.querySelector('[data-z=keep]').textContent = sel.has(x.key) ? '✓ Zostaje w pokazie' : '○ Zostaw w pokazie'; };
-  st.addEventListener('wheel', e => { e.preventDefault(); const r = st.getBoundingClientRect(), cx = e.clientX - r.left - r.width / 2, cy = e.clientY - r.top - r.height / 2, nz = Math.min(8, Math.max(1, z * (e.deltaY < 0 ? 1.2 : 1 / 1.2))); tx = cx - (cx - tx) * nz / z; ty = cy - (cy - ty) * nz / z; z = nz; if (z === 1) tx = ty = 0; apply(); }, { passive: false });
-  st.addEventListener('pointerdown', e => { drag = { x: e.clientX - tx, y: e.clientY - ty }; st.setPointerCapture(e.pointerId); });
-  st.addEventListener('pointermove', e => { if (drag && z > 1) { tx = e.clientX - drag.x; ty = e.clientY - drag.y; apply(); } });
-  st.addEventListener('pointerup', () => { drag = null; });
-  st.addEventListener('dblclick', e => { if (z > 1) { z = 1; tx = ty = 0; } else { const r = st.getBoundingClientRect(); z = Math.max(2, im.naturalWidth / im.clientWidth); tx = -(e.clientX - r.left - r.width / 2) * (z - 1); ty = -(e.clientY - r.top - r.height / 2) * (z - 1); } apply(); });
-  const close = () => { v.remove(); document.removeEventListener('keydown', key, true); upd(); };
-  const key = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } else if (e.key === 'ArrowLeft') { e.stopPropagation(); show(i - 1); } else if (e.key === 'ArrowRight') { e.stopPropagation(); show(i + 1); } };
-  document.addEventListener('keydown', key, true);
-  v.querySelector('.zv-top').onclick = v.querySelector('.zv-nav').onclick = e => {
-    const a = e.target.dataset && e.target.dataset.z; if (!a) return;
-    if (a === 'x') close(); if (a === 'prev') show(i - 1); if (a === 'next') show(i + 1);
-    if (a === 'keep') { const k = g[i].key; sel.has(k) ? sel.delete(k) : sel.add(k); show(i); }
-    if (a === 'only') { sel.clear(); sel.add(g[i].key); close(); }
+  // rozmiar zdjęcia dopasowanego do ekranu (bez powiększenia)
+  const fit = () => { const r = st.getBoundingClientRect(), nw = im.naturalWidth || r.width, nh = im.naturalHeight || r.height, k = Math.min(r.width / nw, r.height / nh); return { w: nw * k, h: nh * k, sw: r.width, sh: r.height, k }; };
+  const zMax = () => Math.max(8, 4 / Math.max(1e-6, fit().k));
+  const clamp = () => { const f = fit(), mx = Math.max(0, (f.w * z - f.sw) / 2), my = Math.max(0, (f.h * z - f.sh) / 2); tx = Math.max(-mx, Math.min(mx, tx)); ty = Math.max(-my, Math.min(my, ty)); };
+  const apply = () => { clamp(); im.style.transform = `translate(${tx}px, ${ty}px) scale(${z})`; const f = fit(); v.querySelector('.zv-pct').textContent = im.naturalWidth ? Math.round(f.k * z * 100) + '%' : ''; st.classList.toggle('zoomed', z > 1.001); };
+  const zoomAt = (nz, cx, cy) => { nz = Math.min(zMax(), Math.max(1, nz)); if (cx == null) { cx = 0; cy = 0; } tx = cx - (cx - tx) * nz / z; ty = cy - (cy - ty) * nz / z; z = nz; if (z <= 1.001) { z = 1; tx = ty = 0; } apply(); };
+  const rel = e => { const r = st.getBoundingClientRect(); return [e.clientX - r.left - r.width / 2, e.clientY - r.top - r.height / 2]; };
+  const show = j => {
+    i = (j + g.length) % g.length; const x = g[i]; z = 1; tx = ty = 0; apply();
+    im.removeAttribute('src');
+    ensureThumbURL(x).then(u => { if (g[i] === x && !im.dataset.full && u) im.src = u; }).catch(() => { });
+    im.dataset.full = '';
+    // do oceny ostrości: oryginał w pełnej rozdzielczości (JPEG/PNG z dysku); HEIC — wersja przygotowana do pokazu
+    const orig = x.file && x.file.native && /\.(jpe?g|png|webp)$/i.test(x.name) ? x.file.url : null;
+    (orig ? Promise.resolve(orig) : displayURL(x)).then(u => { if (!u) return; const pre = new Image(); pre.onload = () => { if (g[i] === x) { im.dataset.full = '1'; im.src = u; } }; pre.onerror = () => { if (orig) displayURL(x).then(d => { if (g[i] === x && d) { im.dataset.full = '1'; im.src = d; } }); }; pre.src = u; }).catch(() => { });
+    v.querySelector('.zv-name').textContent = `${i + 1} / ${g.length} · ${fmtHM(x.t)} · ${x.name}`;
+    v.querySelector('[data-z=keep]').textContent = sel.has(x.key) ? '✓ Zostaje w pokazie' : '○ Zostaw w pokazie';
   };
+  im.addEventListener('load', apply);
+  st.addEventListener('wheel', e => { e.preventDefault(); const [cx, cy] = rel(e); zoomAt(z * (e.deltaY < 0 ? 1.25 : 1 / 1.25), cx, cy); }, { passive: false });
+  st.addEventListener('pointerdown', e => { if (e.button !== 0) return; drag = { x: e.clientX - tx, y: e.clientY - ty }; st.setPointerCapture(e.pointerId); st.classList.add('drag'); });
+  st.addEventListener('pointermove', e => { if (drag && z > 1) { tx = e.clientX - drag.x; ty = e.clientY - drag.y; apply(); } });
+  const end = () => { drag = null; st.classList.remove('drag'); };
+  st.addEventListener('pointerup', end); st.addEventListener('pointercancel', end);
+  st.addEventListener('dblclick', e => { if (z > 1.001) zoomAt(1); else { const [cx, cy] = rel(e); zoomAt(Math.max(2, 1 / fit().k), cx, cy); } });
+  const onResize = () => apply(); window.addEventListener('resize', onResize);
+  const close = () => { v.remove(); document.removeEventListener('keydown', key, true); window.removeEventListener('resize', onResize); upd(); };
+  const key = e => {
+    const k = e.key; let used = true;
+    if (k === 'Escape') close(); else if (k === 'ArrowLeft') show(i - 1); else if (k === 'ArrowRight') show(i + 1);
+    else if (k === '+' || k === '=') zoomAt(z * 1.25); else if (k === '-' || k === '_') zoomAt(z / 1.25); else if (k === '0') zoomAt(1);
+    else if (k === ' ' || k === 'Enter') { const kk = g[i].key; sel.has(kk) ? sel.delete(kk) : sel.add(kk); show(i); }
+    else used = false;
+    if (used) { e.preventDefault(); e.stopPropagation(); }
+  };
+  document.addEventListener('keydown', key, true);
+  v.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('[data-z]'); if (!a) return;
+    const d = a.dataset.z;
+    if (d === 'x') close(); if (d === 'prev') show(i - 1); if (d === 'next') show(i + 1);
+    if (d === 'in') zoomAt(z * 1.4); if (d === 'out') zoomAt(z / 1.4); if (d === 'fit') zoomAt(1);
+    if (d === 'keep') { const k = g[i].key; sel.has(k) ? sel.delete(k) : sel.add(k); show(i); }
+    if (d === 'only') { sel.clear(); sel.add(g[i].key); close(); }
+  });
   show(i);
 }
 

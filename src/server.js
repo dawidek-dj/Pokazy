@@ -165,7 +165,10 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
       if (p === '/native/castmusic' && req.method === 'POST') { const d = JSON.parse((await readBody(req)).toString('utf8') || '{}'); if (d.path) roots.add(path.dirname(d.path)); ST.castMusic = { path: d.path || '', radio: d.radio || '' }; return json(res, { ok: true }); }
       if (p === '/native/castmedia' && req.method === 'POST') {
         const d = JSON.parse((await readBody(req)).toString('utf8') || '{}');
-        ST.cast = new Map((d.items || []).filter(x => x && x.key && x.path && inRoots(x.path)).map(x => [x.key, x]));
+        const m = ST.cast instanceof Map ? ST.cast : new Map();
+        for (const x of (d.items || [])) if (x && x.key && x.path && inRoots(x.path)) { m.delete(x.key); m.set(x.key, x); }
+        while (m.size > 80) m.delete(m.keys().next().value);
+        ST.cast = m;
         return json(res, { ok: true });
       }
       if (p === '/native/strip') { const f = await native.strip(fp); return f ? sendFile(req, res, f, 'image/jpeg') : send(res, 404, 'text/plain', '404'); }

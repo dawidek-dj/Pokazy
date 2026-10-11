@@ -620,7 +620,7 @@ function startVideo(v, it, tok) {
   v.onended = () => { if (tok === Show.token) nextSlide(); };
   v.onerror = () => { if (tok !== Show.token) return; flash(`Pomijam ${it.name} — błąd odtwarzania`); alertPulse('err:' + it.key, 'warn', `Film „${it.name}” przerwał się z błędem — pominięty.`); Show.timer = setTimeout(() => { if (tok === Show.token) nextSlide(); }, 2000); };
   routeAudio(v, it); applyVideoVolume(v, it);
-  if (!it.live && !v.muted && !Show.videoMusic) { Show.videoMusic = true; Music.videoStart(); }
+  if (!it.live && (!v.muted || v._castMuted) && !Show.videoMusic) { Show.videoMusic = true; Music.videoStart(); }
   if (Show.playing) playVideo(v);
   if (Fit.videoMax > 0 && v.duration > Fit.videoMax + 2) schedule(Fit.videoMax * 1000);
 }

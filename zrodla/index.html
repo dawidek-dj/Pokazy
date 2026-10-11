@@ -314,10 +314,12 @@ body.console-on.ytvis .cbottom{padding-bottom:78px}
 .sccard .sct{position:absolute;left:0;right:0;bottom:0;padding:6px 10px;background:linear-gradient(transparent,rgba(0,0,0,.8));display:grid;font-size:13px}.sccard .sct small{color:#ccc}
 .sccard .zbtn{position:absolute;top:8px;right:8px;width:38px;height:38px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:18px;cursor:zoom-in}
 .sccard .chk{position:absolute;top:8px;left:8px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.5);color:transparent;font-weight:700}.sccard.on .chk{background:var(--gold);color:#2A1D22}
-.zv{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.96);display:grid;grid-template-rows:auto 1fr auto;color:#eee}
-.zv-top,.zv-nav{display:flex;gap:10px;align-items:center;padding:10px 16px}.zv-top span{flex:1}.zv-nav{justify-content:center}.zv-nav small{color:#aaa}
-.zv button{font:inherit;color:#fff;background:#2a2230;border:1px solid #555;border-radius:999px;padding:7px 14px;cursor:pointer}
-.zv-st{position:relative;overflow:hidden;display:grid;place-items:center;cursor:grab;touch-action:none}.zv-st img{max-width:100%;max-height:100%;transform-origin:50% 50%;user-select:none;-webkit-user-drag:none}
+.zv{position:fixed;inset:0;z-index:300;background:#000;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;color:#eee}
+.zv-top,.zv-nav{display:flex;gap:10px;align-items:center;padding:10px 16px;background:rgba(20,14,22,.9)}.zv-top .zv-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.zv-pct{min-width:52px;text-align:right;color:var(--gold2);font-weight:600}
+.zv-nav{justify-content:center}.zv-help{text-align:center;font-size:12px;color:#999;padding:0 16px 8px;background:rgba(20,14,22,.9)}
+.zv button{font:inherit;color:#fff;background:#2a2230;border:1px solid #555;border-radius:999px;padding:7px 14px;cursor:pointer}.zv button:hover{border-color:var(--gold)}
+.zv-st{position:relative;min-height:0;overflow:hidden;touch-action:none;cursor:zoom-in}.zv-st.zoomed{cursor:grab}.zv-st.zoomed.drag{cursor:grabbing}
+.zv-st img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform-origin:50% 50%;user-select:none;-webkit-user-drag:none;will-change:transform}
 .card.mosaic{position:absolute;inset:0;padding:0;display:block;background:#000}
 .card.mosaic .mos{position:absolute;inset:0;overflow:hidden}
 .card.mosaic .mos img{width:100%;height:100%;object-fit:contain;transform-origin:50% 42%}
@@ -333,6 +335,23 @@ body.console-on.ytvis .cbottom{padding-bottom:78px}
 .srcbar[hidden]{display:none}
 .srcbar b{font-weight:600;color:var(--gold2)}.srcbar .grow{flex:1}.srcbar small{color:var(--muted)}
 .srcbar input{width:80px;font:inherit;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text)}
+.audsel{display:grid;gap:8px;margin:6px 0 4px}
+.audopt{display:flex;gap:12px;align-items:center;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);cursor:pointer}
+.audopt:has(input:checked){border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.audopt input{accent-color:var(--gold);width:18px;height:18px;flex:none}.audopt span{display:grid}.audopt small{color:var(--muted)}
+#castAudBtn{margin-left:8px;white-space:nowrap}
+/* niespodzianki */
+.splist{display:grid;gap:12px;max-height:62vh;overflow:auto;padding:2px}
+.sprow{display:grid;gap:10px;padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--panel2)}
+.sph{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.sph .spn{flex:1;min-width:200px;font:italic 500 22px/1.2 var(--serif);color:var(--gold2);background:transparent;border:0;border-bottom:1px solid var(--line);padding:4px 2px}
+.sph .spst{color:var(--muted);font-size:13px}
+.spf{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}.spf input{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--text)}
+@media (max-width:760px){.spf{grid-template-columns:1fr}}
+.spth{display:flex;gap:6px;flex-wrap:wrap}.spi{position:relative;width:86px;height:64px;border-radius:8px;overflow:hidden;background:#000}.spi img{width:100%;height:100%;object-fit:cover}
+.spi button{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:11px;cursor:pointer;padding:0}
+.spi i{position:absolute;left:5px;bottom:3px;font-style:normal;color:#fff;font-size:12px;text-shadow:0 1px 3px #000}
+.tile.surp{outline:2px dashed var(--gold);outline-offset:-2px}
+#spBtn{margin-left:8px;white-space:nowrap}
 /* okno startowe, radio, ekran bez kabla */
 .start{display:grid;gap:16px}
 .st-head{display:grid;gap:2px;text-align:center}.st-head b{font:italic 500 40px/1.1 var(--serif);color:var(--gold2)}.st-head span{color:var(--muted)}
@@ -805,6 +824,7 @@ body.showing #yt-holder{z-index:99}
         <label class="chk app-only-f"><input type="checkbox" id="sMosaic"> <span>🧩 Mozaika na zakończenie — duży obraz ułożony z Waszych zdjęć (obraz wybierasz w szczegółach zdjęcia; domyślnie pierwsze ulubione)</span></label>
         <label class="chk"><input type="checkbox" id="sTripStats"> <span>Statystyki na koniec (kilometry z GPS, miejscowości, dni, zdjęcia, filmy)</span></label>
         <label class="field"><span>Dodatkowe liczby do statystyk — jedna w linii</span><textarea id="sTripExtra" rows="3" placeholder="Kroki: 84 312&#10;Km samochodem: 1 250&#10;Lody: 23"></textarea></label>
+        <button class="btn small" id="sSurprises" type="button" style="justify-self:start" title="Zdjęcia albo film, które wskakują na ekran o ustalonej godzinie albo po kliknięciu w pilocie">🎁 Niespodzianki</button>
         <div class="field"><span>Dźwięk przy ogłoszeniach (muzyka na chwilę cichnie)</span><span class="row"><select id="sAnnSound" style="flex:1"><option value="auto">automatycznie (gong — przerwa, fanfara — tort i taniec, dzwonek — reszta)</option><option value="gong">zawsze gong</option><option value="dzwonek">zawsze dzwonek</option><option value="fanfara">zawsze fanfara</option><option value="cymbalki">zawsze cymbałki</option><option value="none">bez dźwięku</option></select><button class="btn small ghost" id="sAnnTest" type="button">▶ Posłuchaj</button></span></div>
         <div class="field"><span>Motyw plansz (kolory, czcionki, ozdobniki — pokaz i pilot)</span><div class="themes" id="themeBox"></div></div>
         <label class="chk"><input type="checkbox" id="sBreakBg"> <span>Tło przerwy: powoli przenikające, rozmyte ulubione zdjęcia (bez ulubionych — losowe z pokazu)</span></label>
