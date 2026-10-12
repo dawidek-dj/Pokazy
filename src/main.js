@@ -232,15 +232,17 @@ const FRAME_SINK = `(async (L) => {
   if (W.__pkErr) return 'err:' + W.__pkErr;
   return vs.length ? (vs.every(v => v.sinkId === id) ? 'ok' : 'pending') : 'wait';
 })`;
-ipcMain.handle('native:frameSink', async (e, label) => {
+ipcMain.handle('native:frameSink', async (e, label, where) => {
   const own = BrowserWindow.fromWebContents(e.sender), out = [];
   for (const w of BrowserWindow.getAllWindows()) {
-    if (w === own) continue;   // główne okno ma przechwytywanie — tam nic nie zmieniamy
+    // 'tv' — okno telewizora; 'main' — główne okno (pokaz na jednym ekranie)
+    if (where === 'main' ? w !== own : w === own) continue;
     let frames = []; try { frames = w.webContents.mainFrame.framesInSubtree; } catch { continue; }
     for (const f of frames) {
       let pu = ''; try { pu = (f.parent && f.parent.url) || ''; } catch { }
       if (!/\/mv\.html/.test(pu)) continue;
-      try { out.push(await f.executeJavaScript(`${FRAME_SINK}(${JSON.stringify(label || '')})`)); } catch (err) { out.push('err:' + (err && err.message)); }
+      // ramka w trakcie wczytywania potrafi nie odpowiedzieć — wtedy próba za chwilę
+      try { out.push(await Promise.race([f.executeJavaScript(`${FRAME_SINK}(${JSON.stringify(label || '')})`), new Promise(r => setTimeout(() => r('wait'), 1500))])); } catch (err) { out.push('err:' + (err && err.message)); }
     }
   }
   return out;

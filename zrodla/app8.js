@@ -46,7 +46,7 @@ function mvLoad() {
   $('#mvMsg').textContent = 'Wczytuję teledysk…'; $('#mvMsg').hidden = false;
   wrap.hidden = false; void wrap.offsetWidth; wrap.classList.add('on');
   const base = location.href.replace(/[^/]*$/, '');
-  f.src = `${base}mv.html?v=${encodeURIComponent(MV.id)}&h=${MV.host}&vol=${S.mvAuto !== false ? 0 : MV.vol}${MV.startAt ? '&t=' + Math.floor(MV.startAt) : ''}`;
+  f.src = `${base}mv.html?v=${encodeURIComponent(MV.id)}${NATIVE ? '&app=1' : ''}&h=${MV.host}&vol=${S.mvAuto !== false ? 0 : MV.vol}${MV.startAt ? '&t=' + Math.floor(MV.startAt) : ''}`;
   clearTimeout(MV.wd);
   MV.wd = setTimeout(mvWatch, 9000);
 }

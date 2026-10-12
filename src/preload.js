@@ -29,5 +29,5 @@ contextBridge.exposeInMainWorld('native', {
   onOpenProject: cb => ipcRenderer.on('native:openProject', (e, id) => cb(id)),
   platform: process.platform,
   displays: () => ipcRenderer.invoke('native:displays'),
-  frameSink: label => ipcRenderer.invoke('native:frameSink', label),
+  frameSink: (label, where) => ipcRenderer.invoke('native:frameSink', label, where || 'tv'),
 });

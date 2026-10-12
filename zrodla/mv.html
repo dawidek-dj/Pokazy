@@ -20,7 +20,7 @@ const host = q.get('h') === 'nocookie' ? 'https://www.youtube-nocookie.com' : 'h
 let player = null;
 // aplikacja: odtwarzacz YouTube może grać na głośniku wybranym w programie (HDMI, Bluetooth…) — bez tego
 // ramka YouTube nie widzi listy głośników. Dostęp do mikrofonu i tak blokuje aplikacja.
-if (/Electron/.test(navigator.userAgent)) {
+if (q.get('app') === '1' || /Electron/.test(navigator.userAgent)) {
   const ADD = 'speaker-selection; microphone', ce = document.createElement.bind(document);
   const join = v => (v ? String(v).replace(/;?\s*$/, '; ') : '') + ADD;
   document.createElement = function (t, o) {

@@ -3,7 +3,7 @@
    Wybór głośnika dla dźwięku pokazu z laptopa (HDMI, głośniki laptopa, Bluetooth, USB)
    • filmy w oknie telewizora — prosto na wybrany głośnik, bez żadnego opóźnienia (ważne przy HDMI: usta i dźwięk razem)
    • muzyka (YouTube, pliki, radio) i ogłoszenia — przez przechwycenie dźwięku okna (opóźnienie kilkudziesięciu ms, przy muzyce niezauważalne)
-   • teledysk na telewizorze — głośnik ustawiany w samym odtwarzaczu YouTube (bez opóźnienia); gdyby się nie dało — przez przechwycenie
+   • teledysk (na telewizorze i na jednym ekranie) — głośnik ustawiany w samym odtwarzaczu YouTube (bez opóźnienia); gdyby się nie dało — przez przechwycenie
    „Domyślne w Windows” = jak dawniej, bez żadnych zmian
    ========================================================= */
 const OUT = { dev: LSG.get('outDev', null), list: [], win: null, relay: {}, ctxs: new Set(), cur: '', missing: false, busy: false };
@@ -72,35 +72,62 @@ function outSync() {
   if (target !== OUT.cur) { OUT.cur = target; outSinkDirect(target); }
   // wzmacniacze przygotowane zawczasu, żeby pierwszy film od razu szedł prosto na głośnik
   if (want) { outCtx(outWin()); if (TV.on && TVDOC) outCtx(TVDOC.defaultView); }
-  // główne okno: muzyka, ogłoszenia (i filmy w trybie jednego ekranu)
-  if (want) relayStart('main', id); else relayStop('main');
-  // teledysk w oknie telewizora: głośnik ustawiany w samym odtwarzaczu YouTube (bez opóźnienia);
-  // dopóki się to nie uda (albo gdyby się nie dało) — przez przechwycenie dźwięku okna telewizora
+  // teledysk: głośnik ustawiany w samym odtwarzaczu YouTube (bez opóźnienia); dopóki się to nie uda
+  // (albo gdyby się nie dało) — przez przechwycenie dźwięku okna, jak muzyka
   const mvTv = MV.on && TV.on && TVDOC && TVDOC.getElementById('mvFrame');
-  if (want && mvTv) { mvSink(id); if (OUT.mv.ok) relayStop('tv'); else relayStart('tv', id); }
-  else { relayStop('tv'); if (OUT.mv.ok && mvTv) mvSink(''); else if (!mvTv) OUT.mv = { key: '' }; }
+  const mvMain = MV.on && !mvTv && document.getElementById('mvFrame');
+  const where = mvTv ? 'tv' : mvMain ? 'main' : '';
+  if (want && where) mvSink(id, where);
+  else if (where && OUT.mv.ok) mvSink('', OUT.mv.where);
+  else if (!where) OUT.mv = { key: '' };
+  const mvDirect = want && OUT.mv.ok;
+  // główne okno: muzyka, ogłoszenia (i filmy w trybie jednego ekranu). Na czas teledysku na jednym ekranie,
+  // gdy gra już prosto na głośnik, a muzyka ucichła — przechwytywanie się wyłącza (inaczej zabrałoby też teledysk)
+  if (want && (OUT.stopping || !(mvDirect && where === 'main' && mainQuiet()))) relayStart('main', id); else relayStop('main');
+  // okno telewizora: tylko teledysk, dopóki nie gra prosto na głośnik
+  if (want && where === 'tv' && !mvDirect) relayStart('tv', id); else relayStop('tv');
+}
+// czy w głównym oknie nic poza teledyskiem nie gra (muzyka wyciszona i zatrzymana)
+function mainQuiet() {
+  try {
+    if (Music.audio && !Music.audio.paused) return false;
+    if (YTP.ready && [1, 3].includes(YTP.player.getPlayerState())) return false;
+  } catch { }
+  return true;
 }
 // ustawienie głośnika w odtwarzaczu teledysku (przez aplikację — odtwarzacz to obca strona w ramce)
 OUT.mv = { key: '' };
-async function mvSink(id) {
+async function mvSink(id, where) {
   if (!NATIVE || !NATIVE.frameSink) return;
   const label = id ? ((OUT.list.find(d => d.deviceId === id) || {}).label || '') : '';
-  const key = `${MV.id}|${MV.host}|${label}`, m = OUT.mv;
-  if (m.key !== key) OUT.mv = { key, ok: false, t: 0, n: 0, fails: 0 };
+  const key = `${MV.id}|${MV.host}|${label}|${where}`, m = OUT.mv;
+  if (m.key !== key) OUT.mv = { key, where, ok: false, t: 0, bad: 0, fails: 0 };
   const s = OUT.mv;
-  if (s.busy || Date.now() - s.t < (s.ok ? 5000 : 900) || s.fails > 6) return;
+  if (s.busy || Date.now() - s.t < (s.ok && !s.bad ? 5000 : 900) || s.fails > 6) return;
   s.busy = true; s.t = Date.now();
   try {
-    const r = await NATIVE.frameSink(label); s.last = r;
+    const r = await NATIVE.frameSink(label, where); s.last = r;
     if (OUT.mv !== s) return;
     const ok = r.length > 0 && r.every(x => x === 'ok');
     if (r.some(x => /^(nodev|err)/.test(x))) { s.fails++; if (s.fails === 1) console.warn('głośnik teledysku', r); }
-    s.ok = ok && !!label; if (!label) OUT.mv = { key: '' };
+    if (!label) { OUT.mv = { key: '' }; return; }
+    // raz ustawiony: chwilowy brak odpowiedzi nie przełącza od razu z powrotem (bez przeskakiwania dźwięku)
+    if (ok) { s.ok = true; s.bad = 0; } else if (s.ok && ++s.bad < 3) { } else s.ok = false;
   } catch (e) { s.fails++; } finally { s.busy = false; }
 }
+// koniec teledysku na jednym ekranie: najpierw wraca przechwytywanie, dopiero potem muzyka (żeby nie zagrała z głośników laptopa)
+const mvStopOUT = mvStop;
+mvStop = function (...a) {
+  if (!MV.on || !Show.on || OUT.exiting || !NATIVE || !OUT.cur || OUT.relay.main || OUT.mv.where !== 'main' || OUT.stopping) return mvStopOUT.apply(this, a);
+  OUT.stopping = true; const vid = MV.id;
+  const go = () => { if (!OUT.stopping) return; OUT.stopping = false; if (MV.id !== vid) return; OUT.mv = { key: '' }; mvStopOUT.apply(this, a); };
+  relayStart('main', OUT.cur).finally(go); setTimeout(go, 1500);
+};
 heartbeat(() => { if (Date.now() - (OUT.t || 0) > 700) { OUT.t = Date.now(); outSync(); } });
 const exitShowOUT = exitShow;
-exitShow = function (...a) { const r = exitShowOUT.apply(this, a); setTimeout(outSync, 50); return r; };
+exitShow = function (...a) { OUT.exiting = true; let r; try { r = exitShowOUT.apply(this, a); } finally { OUT.exiting = false; } setTimeout(outSync, 50); return r; };
+const switchModeOUT = switchMode;
+switchMode = function (...a) { OUT.exiting = true; try { return switchModeOUT.apply(this, a); } finally { OUT.exiting = false; } };
 // głośnik zniknął (np. Bluetooth się rozłączył) — dźwięk wraca na domyślne urządzenie, a gdy głośnik wróci — znowu na niego
 navigator.mediaDevices && navigator.mediaDevices.addEventListener && navigator.mediaDevices.addEventListener('devicechange', async () => {
   const wasMissing = OUT.missing; await outDevices(); const id = outResolve();
@@ -136,7 +163,7 @@ async function renderOutUI() {
 }
 function openOutPicker() {
   const b = openModal();
-  b.innerHTML = `<h3>🔈 Gdzie gra dźwięk pokazu?</h3><p class="hint">Muzyka, filmy i ogłoszenia z laptopa. Filmy i teledyski na telewizorze idą na wybrany głośnik bez opóźnienia. Głośnik Bluetooth sam z siebie ma niewielkie opóźnienie — to cecha Bluetooth, nie programu.</p><div class="plist" id="outL"></div>
+  b.innerHTML = `<h3>🔈 Gdzie gra dźwięk pokazu?</h3><p class="hint">Muzyka, filmy i ogłoszenia z laptopa. Filmy i teledyski idą na wybrany głośnik bez opóźnienia. Głośnik Bluetooth sam z siebie ma niewielkie opóźnienie — to cecha Bluetooth, nie programu.</p><div class="plist" id="outL"></div>
     <div class="row" style="justify-content:space-between"><button class="btn small ghost" id="outT">▶ Dźwięk próbny</button><button class="btn small" data-close>Zamknij</button></div>`;
   const L = b.querySelector('#outL');
   (async () => {
