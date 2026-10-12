@@ -149,9 +149,55 @@ function kick() {
   }
   else if (m && m.on && m.src !== 'yt' && m.src !== 'none') { const a = $('#aud'); a.muted = false; a.play().catch(() => { }); }
   if (video && st.playing) { video.muted = !soundOn() || video._mute; video.play().catch(() => { }); }
+  if (RTC.audio && RTC.state === 'live') { RTC.audio.muted = !soundOn(); RTC.audio.play().catch(() => { }); }
   MU.since = Date.now();
 }
+// ---- muzyka przesyłana z laptopa (WebRTC): urządzenie gra dokładnie to, co laptop — każdy utwór, bez ograniczeń YouTube na telefonach
+const RTC = { pc: null, state: 'off', at: 0, fails: 0, audio: null, busy: false, discAt: 0 };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const iceDone = pc => new Promise(res => { if (pc.iceGatheringState === 'complete') return res(); const t = setTimeout(res, 2500); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res(); } }); });
+function rtcAudio() { if (!RTC.audio) { const a = document.createElement('audio'); a.autoplay = true; a.playsInline = true; a.setAttribute('playsinline', ''); document.body.append(a); RTC.audio = a; } return RTC.audio; }
+async function rtcConnect() {
+  if (RTC.busy || !window.RTCPeerConnection) { if (!window.RTCPeerConnection) RTC.fails = 9; return; }
+  RTC.busy = true; RTC.at = Date.now(); RTC.state = 'connecting';
+  try {
+    if (RTC.pc) { try { RTC.pc.close(); } catch { } }
+    const pc = new RTCPeerConnection({ iceServers: [] }); RTC.pc = pc;
+    pc.addTransceiver('audio', { direction: 'recvonly' });
+    pc.ontrack = e => { const a = rtcAudio(); a.srcObject = (e.streams && e.streams[0]) || new MediaStream([e.track]); a.muted = !soundOn(); a.play().catch(() => { }); };
+    pc.onconnectionstatechange = () => {
+      if (pc !== RTC.pc) return; const s = pc.connectionState;
+      if (s === 'connected') { RTC.state = 'live'; RTC.fails = 0; RTC.discAt = 0; }
+      else if (s === 'failed') { RTC.state = 'failed'; RTC.fails++; }
+      else if (s === 'disconnected') RTC.discAt = Date.now();
+    };
+    const off = await pc.createOffer(); await pc.setLocalDescription(off); await iceDone(pc);
+    const q = `/api/r/rtc?k=${encodeURIComponent(key)}&id=${encodeURIComponent(devId)}`;
+    await fetch(q, { method: 'POST', body: JSON.stringify(pc.localDescription) });
+    for (let i = 0; i < 40 && pc === RTC.pc; i++) {
+      await sleep(400);
+      try { const r = await (await fetchT(q)).json(); if (r.answer) { await pc.setRemoteDescription(JSON.parse(r.answer)); break; } } catch { }
+    }
+    setTimeout(() => { if (pc === RTC.pc && pc.connectionState !== 'connected') { RTC.state = 'failed'; RTC.fails++; } }, 12000);
+  } catch (e) { RTC.state = 'failed'; RTC.fails++; }
+  finally { RTC.busy = false; }
+}
+function rtcStop() { if (RTC.pc) { try { RTC.pc.close(); } catch { } } RTC.pc = null; RTC.state = 'off'; if (RTC.audio) { RTC.audio.pause(); RTC.audio.srcObject = null; } }
 function music(m) {
+  // laptop przesyła muzykę: odbiór strumienia zamiast własnego odtwarzacza YouTube (po 3 nieudanych próbach — po staremu)
+  if (m && m.stream && soundOn() && RTC.fails < 3) {
+    $('#aud').pause(); if (MU.ytReady) { try { const s = MU.yt.getPlayerState(); if (s === 1 || s === 3) MU.yt.pauseVideo(); } catch { } }
+    const stale = !RTC.pc || RTC.state === 'failed' || RTC.state === 'off' || (RTC.state === 'connecting' && Date.now() - RTC.at > 15000) || (RTC.discAt && Date.now() - RTC.discAt > 5000);
+    if (stale && !RTC.busy && Date.now() - RTC.at > 3000) rtcConnect();
+    const au = RTC.audio, live = RTC.state === 'live' && au;
+    if (au) { au.muted = !soundOn(); if (live && au.paused) au.play().catch(() => { }); }
+    const playing = !!(live && !au.paused);
+    MU.src = 'stream'; MU.id = 'stream'; MU.status = playing ? 'ok' : MU.blocked ? 'blocked' : 'load';
+    if (!playing && live) { if (!MU.since) MU.since = Date.now(); if (Date.now() - MU.since > 4000 && !MU.blocked) blocked(true); }
+    else { MU.since = 0; if (MU.blocked && playing) blocked(false); }
+    return;
+  }
+  if (RTC.pc) rtcStop();
   const a = $('#aud'), fb = !!(m && m.fb) && Date.now() > MU.forceTill;   // laptop gra ten utwór — tu cisza (chyba że właśnie dotknięto ekranu)
   const play = !!(soundOn() && m && m.on && !fb);
   const stopYT = () => { if (MU.ytReady) try { const s = MU.yt.getPlayerState(); if (s === 1 || s === 3) MU.yt.pauseVideo(); } catch { } };

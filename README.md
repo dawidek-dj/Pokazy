@@ -31,3 +31,4 @@ Jak zbudować nową wersję: zobacz **PORADNIK.md**.
 - `.github/workflows/build.yml` — automatyczna budowa instalatora i wersji przenośnej
 
 Niespodzianki o wyznaczonej godzinie (albo z pilota), album-książka z przewracanymi stronami, wybór źródła dźwięku w pokazie bez kabla.
+Pokaz bez kabla: muzyka przesyłana z laptopa do urządzenia przez Wi-Fi (WebRTC) — grają wszystkie utwory, także te, których YouTube nie pozwala odtwarzać na telefonach.

@@ -206,20 +206,3 @@ openAlbum = function () {
   heartbeat(() => { const x = $('#sSurprises'); if (!x || x._t && Date.now() - x._t < 3000) return; x._t = Date.now(); const n = spAll().length; const t = `🎁 Niespodzianki${n ? ' (' + n + ')' : ''}`; if (x.textContent !== t) x.textContent = t; });
 })();
 
-// start
-Hist.last = JSON.stringify(O);
-bindSettings();
-bindExtraSettings();
-renderSidebar();
-renderTimeline();
-renderHeader();
-renderReopen();
-updUndoUI();
-updMVUI();
-updGReqUI();
-updProjUI();
-updGPUI();
-for (const P of Picker.inst) Picker.render(P);
-if (location.protocol === 'file:') $('#fileWarn').hidden = false;
-Remote.init();
-if (!NATIVE) offerRecovery();

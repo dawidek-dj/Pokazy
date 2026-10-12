@@ -86,7 +86,7 @@ function castAudioSync() {
 }
 heartbeat(async () => { if (!document.body.classList.contains('castmode') || Date.now() - CASTC.t < 1500) return; CASTC.t = Date.now(); await castClients(); castAudioSync(); castMusFbUpdate(); });
 const applyMC = Music.apply.bind(Music);
-Music.apply = function () { applyMC(); if (castAudioOn() && !CMF.on) { if (this.audio) this.audio.volume = 0; if (YTP.ready) try { YTP.player.setVolume(0); } catch { } } };
+Music.apply = function () { applyMC(); if (castAudioOn() && !CMF.on && !(window.STREAM && STREAM.live)) { if (this.audio) this.audio.volume = 0; if (YTP.ready) try { YTP.player.setVolume(0); } catch { } } };
 const applyVVC = applyVideoVolume;
 applyVideoVolume = function (v, it) {
   applyVVC(v, it); if (!v || Show.forcedMute) return;
@@ -97,7 +97,7 @@ const exitShowCA = exitShow;
 exitShow = function (...a) { const r = exitShowCA.apply(this, a); castAudioWas = false; Music.apply(); return r; };
 // bieżąca muzyka dla urządzenia bez kabla (YouTube: film i miejsce; pliki: plik i miejsce; radio)
 const CM = { sig: '' };
-function castMus() { const m = castMusRaw(); if (m) m.fb = CMF.on; return m; }
+function castMus() { const m = castMusRaw(); if (m) { m.fb = CMF.on; m.stream = !!(window.STREAM && STREAM.live); } return m; }
 function castMusRaw() {
   if (!document.body.classList.contains('castmode')) return null;
   const on = Music.active() && !Music.suppressed, vol = Math.max(0, Math.min(1, S.musicVolume / 100 * Music.level));

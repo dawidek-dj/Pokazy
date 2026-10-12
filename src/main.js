@@ -18,6 +18,8 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 app.commandLine.appendSwitch('enable-features', 'PlatformHEVCDecoderSupport');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-background-timer-throttling');
+// przesyłanie muzyki do urządzenia bez kabla (WebRTC w sieci lokalnej): prawdziwe adresy w sieci domowej zamiast ukrytych nazw .local
+app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns');
 if (!app.requestSingleInstanceLock()) { app.quit(); return; }
 
 const { createNative } = require('./native');
@@ -218,6 +220,13 @@ app.on('second-instance', (e, argv) => {
   const p = projArg(argv); if (p) mainWin.webContents.send('native:openProject', p);
 });
 app.whenReady().then(async () => {
+  // przechwytywanie dźwięku wyłącznie z okna programu (muzyka do urządzenia bez kabla); głośniki laptopa w tym czasie milczą
+  try {
+    require('electron').session.defaultSession.setDisplayMediaRequestHandler((req, cb) => {
+      try { const u = (req.frame && req.frame.url) || ''; if (/^http:\/\/(localhost|127\.0\.0\.1):\d+\//.test(u)) return cb({ video: req.frame, audio: req.frame }); } catch { }
+      cb({});
+    });
+  } catch (e) { log('przechwytywanie dźwięku', e.message); }
   Menu.setApplicationMenu(null);
   try { await startServer(); }
   catch (e) { log(e); dialog.showErrorBox('Pokazy', String(e.message || e)); app.quit(); return; }
