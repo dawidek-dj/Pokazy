@@ -215,6 +215,36 @@ ipcMain.handle('native:importDir', async (e, project) => {
   fs.mkdirSync(dir, { recursive: true }); return dir;
 });
 ipcMain.handle('native:displays', () => { const pr = screen.getPrimaryDisplay().id; return screen.getAllDisplays().map(d => ({ w: Math.round(d.size.width * d.scaleFactor), h: Math.round(d.size.height * d.scaleFactor), primary: d.id === pr })); });
+// teledysk z YouTube w oknie telewizora: dźwięk prosto na wybrany głośnik (bez przechwytywania — bez opóźnienia)
+// odtwarzacz YouTube to obca strona w ramce, więc głośnik ustawiamy w niej samej (po nazwie, bo identyfikatory są inne dla każdej strony)
+const FRAME_SINK = `(async (L) => {
+  const W = window; let id = '';
+  if (L) {
+    const ds = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audiooutput');
+    const d = ds.find(d => d.label === L); if (!d || !d.deviceId) return 'nodev:' + ds.map(d => (d.label || '?') + (d.deviceId ? '' : '(bez id)')).join('|');
+    id = d.deviceId;
+  }
+  W.__pkSink = id; W.__pkErr = '';
+  const ap = () => { for (const v of document.querySelectorAll('video,audio')) if (v.sinkId !== W.__pkSink) v.setSinkId(W.__pkSink).catch(e => { W.__pkErr = String(e && e.message || e); }); };
+  if (!W.__pkObs) { W.__pkObs = new MutationObserver(ap); W.__pkObs.observe(document.documentElement, { childList: true, subtree: true }); }
+  ap(); await new Promise(r => setTimeout(r, 250));
+  const vs = [...document.querySelectorAll('video,audio')];
+  if (W.__pkErr) return 'err:' + W.__pkErr;
+  return vs.length ? (vs.every(v => v.sinkId === id) ? 'ok' : 'pending') : 'wait';
+})`;
+ipcMain.handle('native:frameSink', async (e, label) => {
+  const own = BrowserWindow.fromWebContents(e.sender), out = [];
+  for (const w of BrowserWindow.getAllWindows()) {
+    if (w === own) continue;   // główne okno ma przechwytywanie — tam nic nie zmieniamy
+    let frames = []; try { frames = w.webContents.mainFrame.framesInSubtree; } catch { continue; }
+    for (const f of frames) {
+      let pu = ''; try { pu = (f.parent && f.parent.url) || ''; } catch { }
+      if (!/\/mv\.html/.test(pu)) continue;
+      try { out.push(await f.executeJavaScript(`${FRAME_SINK}(${JSON.stringify(label || '')})`)); } catch (err) { out.push('err:' + (err && err.message)); }
+    }
+  }
+  return out;
+});
 ipcMain.on('native:showItem', (e, p) => { try { require('electron').shell.showItemInFolder(p); } catch { } });
 
 app.on('second-instance', (e, argv) => {
@@ -230,6 +260,14 @@ app.whenReady().then(async () => {
       cb({});
     });
   } catch (e) { log('przechwytywanie dźwięku', e.message); }
+  // obce strony (np. odtwarzacz YouTube) nie dostają mikrofonu ani kamery — widzą tylko listę głośników
+  try {
+    const ours = s => new RegExp(`^http://(localhost|127\\.0\\.0\\.1):${port}(/|$)`).test(s || '');
+    require('electron').session.defaultSession.setPermissionRequestHandler((wc, perm, cb, det) => {
+      if ((perm === 'media' || perm === 'camera' || perm === 'microphone') && !ours((det && (det.securityOrigin || det.requestingUrl)) || '')) return cb(false);
+      cb(true);
+    });
+  } catch (e) { log('uprawnienia', e.message); }
   Menu.setApplicationMenu(null);
   try { await startServer(); }
   catch (e) { log(e); dialog.showErrorBox('Pokazy', String(e.message || e)); app.quit(); return; }

@@ -18,6 +18,22 @@ const q = new URLSearchParams(location.search);
 const id = q.get('v');
 const host = q.get('h') === 'nocookie' ? 'https://www.youtube-nocookie.com' : 'https://www.youtube.com';
 let player = null;
+// aplikacja: odtwarzacz YouTube może grać na głośniku wybranym w programie (HDMI, Bluetooth…) — bez tego
+// ramka YouTube nie widzi listy głośników. Dostęp do mikrofonu i tak blokuje aplikacja.
+if (/Electron/.test(navigator.userAgent)) {
+  const ADD = 'speaker-selection; microphone', ce = document.createElement.bind(document);
+  const join = v => (v ? String(v).replace(/;?\s*$/, '; ') : '') + ADD;
+  document.createElement = function (t, o) {
+    const e = ce(t, o);
+    if (/^iframe$/i.test(t)) {
+      const sa = e.setAttribute.bind(e);
+      e.setAttribute = (n, v) => sa(n, String(n).toLowerCase() === 'allow' ? join(v) : v);
+      try { Object.defineProperty(e, 'allow', { configurable: true, get: () => e.getAttribute('allow') || '', set: v => sa('allow', join(v)) }); } catch (x) { }
+      sa('allow', ADD);
+    }
+    return e;
+  };
+}
 const hook = (n, a) => { try { parent.mvHook && parent.mvHook(n, a); } catch (e) { } };
 window.mvApi = {
   play: () => { try { player.playVideo(); } catch (e) { } },
