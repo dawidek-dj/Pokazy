@@ -5,6 +5,24 @@
    a urządzenie odbiera go przez WebRTC. Dzięki temu grają wszystkie utwory, także te, których YouTube nie pozwala
    odtwarzać na telefonach. Gdy połączenie się nie uda — urządzenie gra po staremu (własny odtwarzacz YouTube).
    ========================================================= */
+// wspólne przechwytywanie dźwięku okna (główne okno / okno telewizora) — korzysta z niego przesyłanie i wybór głośnika
+const CAP = { main: null, tv: null, pend: {} };
+async function capGet(which) {
+  const c = CAP[which]; if (c && c.track.readyState === 'live') { c.n++; return c.track; }
+  if (CAP.pend[which]) { await CAP.pend[which]; return capGet(which); }
+  const W = which === 'tv' ? TV.win : window; if (!W || W.closed) throw new Error('brak okna');
+  const p = (async () => {
+    const st = await W.navigator.mediaDevices.getDisplayMedia({ video: true, audio: { suppressLocalAudioPlayback: true, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    st.getVideoTracks().forEach(t => t.stop());
+    const tr = st.getAudioTracks()[0]; if (!tr) throw new Error('brak ścieżki dźwięku');
+    CAP[which] = { track: tr, n: 0 };
+    tr.addEventListener('ended', () => { if (CAP[which] && CAP[which].track === tr) CAP[which] = null; });
+  })();
+  CAP.pend[which] = p.catch(() => { });
+  try { await p; } finally { delete CAP.pend[which]; }
+  CAP[which].n++; return CAP[which].track;
+}
+function capRelease(which) { const c = CAP[which]; if (!c) return; if (--c.n <= 0) { try { c.track.stop(); } catch { } CAP[which] = null; } }
 const STREAM = window.STREAM = { stream: null, track: null, live: false, busy: false, pcs: new Map(), fail: 0, lastTry: 0 };
 const streamWanted = () => NATIVE && Show.on && document.body.classList.contains('castmode') && S.castAudio !== false && S.castStream !== false
   && CASTC.list.some(d => d.audio);
@@ -12,18 +30,16 @@ async function streamStart() {
   if (STREAM.live || STREAM.busy) return;
   STREAM.busy = true; STREAM.lastTry = Date.now();
   try {
-    const st = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: { suppressLocalAudioPlayback: true, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
-    st.getVideoTracks().forEach(t => t.stop());
-    const tr = st.getAudioTracks()[0]; if (!tr) throw new Error('brak ścieżki dźwięku');
+    const tr = await capGet('main');
     STREAM.stream = new MediaStream([tr]); STREAM.track = tr; STREAM.live = true; STREAM.fail = 0;
-    tr.onended = () => { STREAM.live = false; STREAM.track = null; Music.apply(); };
+    tr.addEventListener('ended', () => { if (STREAM.track === tr) { STREAM.live = false; STREAM.track = null; Music.apply(); } });
     for (const pc of STREAM.pcs.values()) for (const s of pc.getSenders()) if (s.track === null || s.track.kind === 'audio') s.replaceTrack(tr).catch(() => { });
     Music.apply(); Remote.push();
   } catch (e) { STREAM.fail++; console.warn('przechwytywanie dźwięku', e); }
   finally { STREAM.busy = false; }
 }
 function streamStop() {
-  if (STREAM.track) { try { STREAM.track.stop(); } catch { } }
+  if (STREAM.track) capRelease('main');
   STREAM.track = null; STREAM.stream = null; STREAM.live = false;
   for (const pc of STREAM.pcs.values()) { try { pc.close(); } catch { } }
   STREAM.pcs.clear();
@@ -67,20 +83,3 @@ updCastAudBtn = function () {
   if (b.textContent !== t) b.textContent = t;
 };
 
-// start
-Hist.last = JSON.stringify(O);
-bindSettings();
-bindExtraSettings();
-renderSidebar();
-renderTimeline();
-renderHeader();
-renderReopen();
-updUndoUI();
-updMVUI();
-updGReqUI();
-updProjUI();
-updGPUI();
-for (const P of Picker.inst) Picker.render(P);
-if (location.protocol === 'file:') $('#fileWarn').hidden = false;
-Remote.init();
-if (!NATIVE) offerRecovery();

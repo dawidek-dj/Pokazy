@@ -66,6 +66,7 @@ function createWindow() {
   // domyślnie od razu pełny ekran (F11 przełącza; opcja w sekcji „Program”)
   mainWin.once('ready-to-show', () => { if (!ws || ws.max) mainWin.maximize(); if (!ws || ws.fs !== false) mainWin.setFullScreen(true); mainWin.show(); });
   mainWin.on('close', saveWinState);
+  mainWin.on('closed', () => { for (const w of BrowserWindow.getAllWindows()) { try { w.destroy(); } catch { } } });   // okna pomocnicze (dźwięk, telewizor) nie mogą trzymać programu przy życiu
   mainWin.on('enter-full-screen', () => mainWin.webContents.send('native:fs', true));
   mainWin.on('leave-full-screen', () => mainWin.webContents.send('native:fs', false));
   mainWin.webContents.setVisualZoomLevelLimits(1, 1).catch(() => { });
@@ -78,6 +79,8 @@ function createWindow() {
   const wc = mainWin.webContents;
   // okna otwierane przez pokaz: telewizor (od razu pełny ekran na drugim ekranie), podgląd pliku, linki zewnętrzne
   wc.setWindowOpenHandler(({ url, frameName }) => {
+    // niewidoczne okno do odtwarzania dźwięku pokazu na wybranym głośniku (laptop, HDMI, Bluetooth)
+    if (frameName === 'pokazy-audio') return { action: 'allow', overrideBrowserWindowOptions: { show: false, width: 320, height: 120, skipTaskbar: true, focusable: false, title: 'Pokazy — dźwięk', webPreferences: { backgroundThrottling: false, preload: undefined } } };
     if (frameName === 'pokaz-tv') {
       const ext = externalDisplay(mainWin), b = ext ? ext.bounds : null;
       return { action: 'allow', overrideBrowserWindowOptions: {
@@ -223,7 +226,7 @@ app.whenReady().then(async () => {
   // przechwytywanie dźwięku wyłącznie z okna programu (muzyka do urządzenia bez kabla); głośniki laptopa w tym czasie milczą
   try {
     require('electron').session.defaultSession.setDisplayMediaRequestHandler((req, cb) => {
-      try { const u = (req.frame && req.frame.url) || ''; if (/^http:\/\/(localhost|127\.0\.0\.1):\d+\//.test(u)) return cb({ video: req.frame, audio: req.frame }); } catch { }
+      try { const u = (req.frame && req.frame.url) || '', o = req.securityOrigin || ''; const ours = s => /^http:\/\/(localhost|127\.0\.0\.1):\d+(\/|$)/.test(s); if (req.frame && (ours(u) || ours(o))) return cb({ video: req.frame, audio: req.frame }); } catch { }
       cb({});
     });
   } catch (e) { log('przechwytywanie dźwięku', e.message); }

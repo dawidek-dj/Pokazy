@@ -13,7 +13,7 @@ const volOf = it => { const v = it && (O[it.key] || {}).vol; return v == null ? 
 // film przechodzi przez wzmacniacz (pozwala dać >100%) i opcjonalnie przez wyrównywanie głośności
 function routeAudio(v, it) {
   if (v._g || v._plain) return;
-  const c = AudioFx.ctx;
+  const c = AudioFx.ctxFor ? AudioFx.ctxFor(v) : AudioFx.ctx;
   if (!c || c.state !== 'running') { v._plain = true; return; }
   try {
     const src = c.createMediaElementSource(v), g = c.createGain();
@@ -33,7 +33,7 @@ function routeAudio(v, it) {
 function applyVideoVolume(v, it) {
   if (!v) return;
   const g = Math.max(0, S.videoVol / 100 * volOf(it));
-  if (v._g) { v.volume = 1; v._g.gain.setTargetAtTime(g * (typeof loudGainLin === 'function' ? loudGainLin(it) : 1), AudioFx.ctx.currentTime, 0.04); }
+  if (v._g) { v.volume = 1; v._g.gain.setTargetAtTime(g * (typeof loudGainLin === 'function' ? loudGainLin(it) : 1), v._g.context.currentTime, 0.04); }
   else v.volume = Math.min(1, g);
 }
 function playVideo(v) {
