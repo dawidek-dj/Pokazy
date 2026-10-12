@@ -161,7 +161,7 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
       }
       if (p === '/native/albumstatus') return json(res, { ok: true, ...albumer.status() });
       // ekran bez kabla: lista mediów bieżącego i kolejnych slajdów (telewizor pobiera je przez Wi-Fi)
-      if (p === '/native/tvclients') { const tnow = Date.now(), L = [...(ST.tvc || new Map()).entries()].filter(([, v]) => tnow - v.last < 4500).map(([id, v]) => ({ id, name: v.name, audio: v.audio })); return json(res, { ok: true, list: L }); }
+      if (p === '/native/tvclients') { const tnow = Date.now(), L = [...(ST.tvc || new Map()).entries()].filter(([, v]) => tnow - v.last < 4500).map(([id, v]) => ({ id, name: v.name, audio: v.audio, ms: v.ms, mid: v.mid, code: v.code })); return json(res, { ok: true, list: L }); }
       if (p === '/native/castmusic' && req.method === 'POST') { const d = JSON.parse((await readBody(req)).toString('utf8') || '{}'); if (d.path) roots.add(path.dirname(d.path)); ST.castMusic = { path: d.path || '', radio: d.radio || '' }; return json(res, { ok: true }); }
       if (p === '/native/castmedia' && req.method === 'POST') {
         const d = JSON.parse((await readBody(req)).toString('utf8') || '{}');
@@ -365,7 +365,7 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
       }
       if (p.startsWith('/api/r/')) {
         if (!ST.token || q.get('k') !== ST.token) return json(res, { ok: false }, 403);
-        if (q.get('tv')) { ST.tvc = ST.tvc || new Map(); ST.tvc.set(String(q.get('id') || '').slice(0, 40), { last: now, name: String(q.get('n') || 'Urządzenie').slice(0, 40), audio: q.get('a') === '1' }); }
+        if (q.get('tv')) { ST.tvc = ST.tvc || new Map(); ST.tvc.set(String(q.get('id') || '').slice(0, 40), { last: now, name: String(q.get('n') || 'Urządzenie').slice(0, 40), audio: q.get('a') === '1', ms: String(q.get('ms') || '').slice(0, 12), mid: String(q.get('mid') || '').slice(0, 300), code: String(q.get('ec') || '').slice(0, 8) }); }
         if (p === '/api/r/music') { const m = ST.castMusic || {}; return m.path && inRoots(m.path) ? sendFile(req, res, m.path) : send(res, 404, 'text/plain', '404'); }
         if (p === '/api/r/radio') { const m = ST.castMusic || {}; return m.radio ? radioPipe(m.radio, req, res) : send(res, 404, 'text/plain', '404'); }
         if (p === '/api/r/media') { const it = ST.cast && ST.cast.get(q.get('key') || ''); if (!it) return send(res, 404, 'text/plain', '404'); if (q.get('v') === 'disp' && native) { const d = await native.cacheFile(it.path, 'disp').catch(() => null); if (d) return sendFile(req, res, d, 'image/jpeg'); } const pv = it.kind === 'video' && native ? await native.preparedPath(it.path, 3840).catch(() => null) : null; return sendFile(req, res, pv || it.path); }

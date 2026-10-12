@@ -219,12 +219,14 @@ const Music = {
     if (this.audio) this.audio.volume = v;
     if (YTP.ready) try { YTP.player.setVolume(Math.round(v * 100)); } catch { }
   },
+  // płynna zmiana głośności — na zegarze (nie na klatkach obrazu), więc działa też przy zminimalizowanym lub zasłoniętym oknie
+  fadeStop() { this.fadeTok = (this.fadeTok || 0) + 1; clearTimeout(this.raf); cancelAnimationFrame(this.raf); },
   fade(to, ms = 700) {
-    cancelAnimationFrame(this.raf);
-    const from = this.level, t0 = performance.now();
+    this.fadeStop();
+    const from = this.level, t0 = performance.now(), tok = this.fadeTok;
     return new Promise(res => {
-      const step = now => { const k = Math.min(1, (now - t0) / ms); this.level = from + (to - from) * k; this.apply(); if (k < 1) this.raf = requestAnimationFrame(step); else res(); };
-      this.raf = requestAnimationFrame(step);
+      const step = () => { if (tok !== this.fadeTok) return res(); const k = Math.min(1, (performance.now() - t0) / ms); this.level = from + (to - from) * k; this.apply(); if (k < 1) this.raf = setTimeout(step, 40); else res(); };
+      step();
     });
   },
   setFiles(files) {
@@ -418,10 +420,10 @@ const Music = {
       flash('🔄 Odświeżono playlistę');
     } catch { }
   },
-  stop() { cancelAnimationFrame(this.raf); this.pauseRaw(); this.suppressed = false; },
+  stop() { this.fadeStop(); this.pauseRaw(); this.suppressed = false; },
   // przełączenie źródła (Pliki ↔ YouTube ↔ Bez): stare źródło milknie całkowicie, nowe rusza, jeśli muzyka ma grać
   async switchSource() {
-    cancelAnimationFrame(this.raf);
+    this.fadeStop();
     if (this.audio) { try { this.audio.pause(); } catch { } }
     if (YTP.ready) { try { YTP.player.pauseVideo(); } catch { } }
     this.started = false; this.title = '';

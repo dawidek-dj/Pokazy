@@ -57,16 +57,36 @@ function updCastAudBtn() {
   b.title = 'Kliknij, aby przełączyć: dźwięk z urządzenia bez kabla albo z laptopa';
 }
 heartbeat(() => { if (Show.on && document.body.classList.contains('castmode')) updCastAudBtn(); else if ($('#castAudBtn')) $('#castAudBtn').remove(); });
-const castAudioOn = () => document.body.classList.contains('castmode') && S.castAudio !== false && CASTC.list.length > 0;
+const castAudioOn = () => document.body.classList.contains('castmode') && S.castAudio !== false && CASTC.list.some(d => d.audio);
+// urządzenie nie może odtworzyć bieżącego utworu (YouTube zablokował, przeglądarka wyciszyła) — ten utwór gra z laptopa
+const CMF = { on: false, bad: 0, id: '', warned: '' };
+function castMusFbUpdate() {
+  const m = castMusRaw(), devs = CASTC.list.filter(d => d.audio);
+  const bad = !!(m && m.on && m.id && devs.length && devs.every(d => ['err', 'muted', 'blocked'].includes(d.ms) && d.mid === m.id));
+  const was = CMF.on;
+  if (m && m.id !== CMF.id) { CMF.id = m ? m.id : ''; CMF.on = false; CMF.bad = 0; }   // nowy utwór — najpierw znów próbuje urządzenie
+  CMF.bad = bad ? CMF.bad + 1 : 0;
+  if (CMF.bad >= 2) CMF.on = true;                            // dwa kolejne odczyty (ok. 3 s) — żeby nie przełączać przy chwilowym buforowaniu
+  if (!bad && devs.some(d => d.ms === 'ok' && d.mid === (m && m.id))) CMF.on = false;   // urządzenie znów gra — laptop milknie
+  if (CMF.on !== was) {
+    Music.apply();
+    if (CMF.on && CMF.warned !== CMF.id) {
+      CMF.warned = CMF.id;
+      const d = devs[0] || {}, why = d.ms === 'err' ? 'YouTube nie pozwala odtworzyć tego utworu na urządzeniu' : 'przeglądarka urządzenia wyciszyła dźwięk (dotknij ekranu urządzenia)';
+      alertPulse('castmus', 'warn', `🔊 Urządzenie bez kabla nie gra utworu „${Music.title || 'bieżący utwór'}” — ${why}. Ten utwór gra z laptopa.`, 60000);
+      flash('🔊 Ten utwór gra z laptopa — urządzenie bez kabla go nie odtwarza');
+    }
+  }
+}
 let castAudioWas = false;
 function castAudioSync() {
   const on = castAudioOn(); if (on === castAudioWas) return; castAudioWas = on;
   Music.apply();
   if (Show.video) applyVideoVolume(Show.video, slides[Show.idx] && slides[Show.idx].items ? slides[Show.idx].items[0] : null);
 }
-heartbeat(async () => { if (!document.body.classList.contains('castmode') || Date.now() - CASTC.t < 1500) return; CASTC.t = Date.now(); await castClients(); castAudioSync(); });
+heartbeat(async () => { if (!document.body.classList.contains('castmode') || Date.now() - CASTC.t < 1500) return; CASTC.t = Date.now(); await castClients(); castAudioSync(); castMusFbUpdate(); });
 const applyMC = Music.apply.bind(Music);
-Music.apply = function () { applyMC(); if (castAudioOn()) { if (this.audio) this.audio.volume = 0; if (YTP.ready) try { YTP.player.setVolume(0); } catch { } } };
+Music.apply = function () { applyMC(); if (castAudioOn() && !CMF.on) { if (this.audio) this.audio.volume = 0; if (YTP.ready) try { YTP.player.setVolume(0); } catch { } } };
 const applyVVC = applyVideoVolume;
 applyVideoVolume = function (v, it) {
   applyVVC(v, it); if (!v || Show.forcedMute) return;
@@ -77,10 +97,11 @@ const exitShowCA = exitShow;
 exitShow = function (...a) { const r = exitShowCA.apply(this, a); castAudioWas = false; Music.apply(); return r; };
 // bieżąca muzyka dla urządzenia bez kabla (YouTube: film i miejsce; pliki: plik i miejsce; radio)
 const CM = { sig: '' };
-function castMus() {
+function castMus() { const m = castMusRaw(); if (m) m.fb = CMF.on; return m; }
+function castMusRaw() {
   if (!document.body.classList.contains('castmode')) return null;
-  const on = Music.active() && !Music.suppressed && Music.level > 0.03, vol = Math.max(0, Math.min(1, S.musicVolume / 100 * Music.level));
-  if (S.musicSource === 'youtube' && YTP.ready) { try { const d = YTP.player.getVideoData() || {}; return { src: 'yt', id: d.video_id || '', t: YTP.player.getCurrentTime() || 0, on: on && YTP.player.getPlayerState() === 1, vol }; } catch { return null; } }
+  const on = Music.active() && !Music.suppressed, vol = Math.max(0, Math.min(1, S.musicVolume / 100 * Music.level));
+  if (S.musicSource === 'youtube' && YTP.ready) { try { const d = YTP.player.getVideoData() || {}, st = YTP.player.getPlayerState(); return { src: 'yt', id: d.video_id || '', t: YTP.player.getCurrentTime() || 0, on: on && (st === 1 || st === 3), vol }; } catch { return null; } }
   if (S.musicSource === 'files' && Music.audio) { const f = Music.files[Music.order ? Music.order[Music.idx] : 0]; return { src: 'file', id: f ? f.name + '|' + f.size : '', t: Music.audio.currentTime || 0, on: on && !Music.audio.paused, vol }; }
   if (S.musicSource === 'radio') return { src: 'radio', id: S.radioUrl || '', t: 0, on, vol };
   return { src: 'none', on: false };
