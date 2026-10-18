@@ -24,6 +24,8 @@ h1{margin:0;font:italic 500 24px/1.1 var(--serif);color:var(--gold2);flex:1;whit
 #st{font-size:13px;color:var(--muted)}
 .now{background:#000;border-radius:14px;overflow:hidden;position:relative;aspect-ratio:16/10;display:grid;place-items:center}
 .now img{width:100%;height:100%;object-fit:contain;display:block}
+.now video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+.now .nvb{position:absolute;left:8px;top:8px;width:auto;min-height:0;height:auto;line-height:1.3;font-weight:400;font-size:12px;background:rgba(0,0,0,.6);color:#eee;border:1px solid rgba(255,255,255,.25);padding:3px 9px;border-radius:999px}
 .now .card{font:italic 500 30px/1.1 var(--serif);color:var(--gold2);text-align:center;padding:0 16px}
 .now .lab{position:absolute;left:10px;bottom:8px;font:italic 500 18px/1 var(--serif);color:#fff;text-shadow:0 1px 8px #000}
 .now .pos{position:absolute;right:10px;top:8px;font-size:12px;color:#ddd;text-shadow:0 1px 6px #000}
@@ -169,7 +171,7 @@ svg{width:26px;height:26px}
   <button id="bReview2" style="min-height:48px;font-size:16px;margin:10px 0">🖼 Przegląd zdjęć przesuwaniem</button><b>Pokaz nie jest uruchomiony.</b><br>Włącz go na laptopie — pilot zadziała od razu.</div>
 
 <main id="ui" hidden style="display:grid;gap:12px">
-  <div class="now"><img id="thumb" alt="" hidden><div class="card" id="card" hidden></div><span class="lab" id="lab"></span><span class="pos" id="pos"></span><span class="zm" id="zm" hidden></span></div>
+  <div class="now"><img id="thumb" alt="" hidden><video id="nowV" muted playsinline preload="auto" hidden></video><button class="nvb" id="nowVBtn" type="button" hidden></button><div class="card" id="card" hidden></div><span class="lab" id="lab"></span><span class="pos" id="pos"></span><span class="zm" id="zm" hidden></span></div>
   <div class="names" id="names"></div>
   <div class="pnote" id="pNote" hidden></div>
   <div class="nxwrap" id="nxWrap" hidden><div class="row" style="align-items:center"><span class="lbl" style="flex:1">Następne — dotknij, aby podejrzeć</span><button id="bAll" style="min-height:36px;flex:none;font-size:14px">📋 Wszystkie slajdy</button></div><div class="nxs" id="nxs"></div></div>
@@ -402,7 +404,7 @@ function thumbUrl(k) { return `/api/r/thumb?k=${encodeURIComponent(key)}&key=${e
 function loadAlThumb(el, tries) {
   const k = el.dataset.key, img = new Image();
   img.onload = () => { el.style.backgroundImage = `url("${img.src}")`; };
-  img.onerror = () => { AL.want.add(k); if (tries < 6) setTimeout(() => loadAlThumb(el, tries + 1), 2500); };
+  img.onerror = () => { if (!el.isConnected) return; AL.want.add(k); if (tries < 40) setTimeout(() => loadAlThumb(el, tries + 1), Math.min(10000, 2000 + tries * 800)); };
   img.src = thumbUrl(k) + '&r=' + tries;
 }
 setInterval(() => { if (AL.want.size) { const ks = [...AL.want].slice(0, 20); ks.forEach(k => AL.want.delete(k)); send('thumbs', '', ks.join(',')); } }, 1200);
@@ -523,6 +525,29 @@ function renderSurp(list) {
     box.append(b);
   }
 }
+// miniatura bieżącego slajdu: gdy jeszcze jej nie ma, próbujemy ponownie
+$('#thumb').onerror = () => { const im = $('#thumb'), n = +(im.dataset.r || 0), src = im.dataset.src; if (src && n < 30) setTimeout(() => { if (im.dataset.src === src) { im.dataset.r = n + 1; im.src = src + '&r=' + (n + 1); } }, 2000); };
+// film na ekranie — podgląd na żywo (bez dźwięku), zsynchronizowany z pokazem; w wersji przeglądarkowej zostaje miniatura
+const NV = { key: '', fail: new Set(), on: (() => { try { return localStorage.getItem('pw.pilotVid') !== '0'; } catch { return true; } })() };
+function nowVideo(s, poster) {
+  const v = $('#nowV'), btn = $('#nowVBtn');
+  const k = s && s.on && s.kind === 'video' && s.thumb ? s.thumb : '';
+  btn.hidden = !k || NV.fail.has(k);
+  btn.textContent = NV.on ? '🎬 podgląd: wł.' : '🎬 podgląd: wył.';
+  if (!k || !NV.on || NV.fail.has(k)) { if (NV.key) { try { v.pause(); } catch { } v.removeAttribute('src'); v.load(); NV.key = ''; } v.hidden = true; return; }
+  if (NV.key !== k) {
+    NV.key = k; v.hidden = true;
+    v.onloadeddata = () => { if (NV.key === k) v.hidden = false; };
+    v.onerror = () => { NV.fail.add(k); if (NV.key === k) { NV.key = ''; v.hidden = true; btn.hidden = true; } };
+    if (poster) v.poster = poster; else v.removeAttribute('poster');
+    v.src = `/api/r/media?k=${encodeURIComponent(key)}&key=${encodeURIComponent(k)}`;
+  }
+  const vr = s.vr || 1; if (v.playbackRate !== vr) v.playbackRate = vr;
+  if (s.playing && v.paused) v.play().catch(() => { });
+  if (!s.playing && !v.paused) v.pause();
+  if (v.readyState >= 1 && typeof s.vt === 'number' && Math.abs(v.currentTime - (s.vt + 0.4 * vr)) > 1.2) { try { v.currentTime = s.vt + 0.4 * vr; } catch { } }
+}
+$('#nowVBtn').onclick = e => { e.stopPropagation(); NV.on = !NV.on; try { localStorage.setItem('pw.pilotVid', NV.on ? '1' : '0'); } catch { } if (last && last.state) nowVideo(last.state, $('#thumb').dataset.src); };
 function renderNext(list) {
   const w = $('#nxWrap'), box = $('#nxs'), sig = list.map(n => n.i + n.key + n.ready).join('|');
   w.hidden = !list.length; if (box.dataset.sig === sig) return; box.dataset.sig = sig; box.replaceChildren();
@@ -530,7 +555,7 @@ function renderNext(list) {
     const d = document.createElement('div'); d.className = 'nx';
     d.innerHTML = '<div class="im"></div><small></small>';
     const im = d.querySelector('.im');
-    if (n.key && n.ready) im.style.backgroundImage = `url("/api/r/thumb?k=${encodeURIComponent(key)}&key=${encodeURIComponent(n.key)}")`;
+    if (n.key && n.ready) { im.dataset.key = n.key; loadAlThumb(im, 0); }
     else if (n.kind === 'card') im.textContent = n.label;
     if (n.kind === 'video') { const v = document.createElement('span'); v.textContent = '▶ film'; im.append(v); }
     d.querySelector('small').textContent = n.kind === 'card' ? 'plansza' : n.pair ? `${n.label} · ⧉ 2 razem` : n.label;
@@ -619,9 +644,9 @@ function render(d) {
   renderGReqs(s);   // prośby gości widać zawsze, także gdy pokaz nie trwa
   if (s.theme && document.documentElement.dataset.theme !== s.theme) document.documentElement.dataset.theme = s.theme;
   renderGPhotos(s.gphotos || []);
-  if (d.offline && !s.on) { show('offline'); return; }
+  if (d.offline && !s.on) { nowVideo(null); show('offline'); return; }
   $('#st').textContent = s.tv ? 'połączono · TV' : 'połączono';
-  if (!s.on) { show('idle'); return; }
+  if (!s.on) { nowVideo(null); show('idle'); return; }
   show('ui');
   renderAlerts(s.alerts || []);
   const rm = $('#remain'), R = s.remain;
@@ -638,9 +663,10 @@ function render(d) {
   $('#thumb').hidden = isCard;
   // miniatura bieżącego slajdu — według pliku; gdy laptop jeszcze jej nie przygotował, spróbujemy przy następnym odświeżeniu
   const tsrc = s.tkey && s.tready ? `/api/r/thumb?k=${encodeURIComponent(key)}&key=${encodeURIComponent(s.tkey)}` : '';
-  if (tsrc && $('#thumb').dataset.src !== tsrc) { $('#thumb').dataset.src = tsrc; $('#thumb').src = tsrc; }
+  if (tsrc && $('#thumb').dataset.src !== tsrc) { $('#thumb').dataset.src = tsrc; $('#thumb').dataset.r = 0; $('#thumb').src = tsrc; }
   if (!tsrc && $('#thumb').dataset.k !== s.tkey) { $('#thumb').removeAttribute('src'); $('#thumb').dataset.src = ''; }
   $('#thumb').dataset.k = s.tkey || '';
+  nowVideo(s, tsrc);
   renderNext(s.next || []);
   tabletTL(s);
   renderSurp(s.surp || []);

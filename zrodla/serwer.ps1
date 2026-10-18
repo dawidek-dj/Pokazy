@@ -144,7 +144,7 @@ function Handle($client) {
         # miniatury wg pliku (biezace i kilka nastepnych zdjec) - trzymamy ostatnie 80
         if (-not $S.thumbs.ContainsKey($tk)) { [void]$S.tord.Add($tk) }
         $S.thumbs[$tk] = $r.body
-        while ($S.tord.Count -gt 80) { $S.thumbs.Remove($S.tord[0]); $S.tord.RemoveAt(0) }
+        while ($S.tord.Count -gt 600) { $S.thumbs.Remove($S.tord[0]); $S.tord.RemoveAt(0) }
         Send-Resp $client 200 $J '{"ok":true}' $head; return
       }
       $S.thumb = $r.body; $S.rev++

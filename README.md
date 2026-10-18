@@ -33,3 +33,5 @@ Jak zbudować nową wersję: zobacz **PORADNIK.md**.
 Niespodzianki o wyznaczonej godzinie (albo z pilota), album-książka z przewracanymi stronami, wybór źródła dźwięku w pokazie bez kabla.
 Pokaz bez kabla: muzyka przesyłana z laptopa do urządzenia przez Wi-Fi (WebRTC) — grają wszystkie utwory, także te, których YouTube nie pozwala odtwarzać na telefonach.
 Wybór głośnika dla pokazu z laptopa (telewizor przez HDMI, głośniki laptopa, Bluetooth, USB): filmy i teledyski grają prosto na wybrany głośnik bez opóźnienia, muzyka w tle przez przechwycenie dźwięku okna; gdy głośnik się rozłączy — wraca na domyślne urządzenie i sam przełącza się z powrotem.
+Pilot Bluetooth (prezenter, pilot multimedialny, pilot do zdjęć): ⏭ ⏮ ⏯ działają od razu, każdy przycisk można „nauczyć” dowolnego działania z legendy (QR, muzyka, przewijanie, przyspieszanie filmu ×1,5 / ×2 — klawisz S…); działa też w trybie bezpiecznym i gdy program jest w tle. Serie: można schować całą serię (bez zostawiania żadnego ujęcia).
+Pilot w telefonie: miniatury wszystkich slajdów tworzy aplikacja (szybko, także w trakcie filmu), a bieżący film widać na telefonie na żywo (bez dźwięku, przycisk „🎬 podgląd”).

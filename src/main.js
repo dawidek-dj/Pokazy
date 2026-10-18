@@ -19,7 +19,9 @@ app.commandLine.appendSwitch('enable-features', 'PlatformHEVCDecoderSupport');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-background-timer-throttling');
 // przesyłanie muzyki do urządzenia bez kabla (WebRTC w sieci lokalnej): prawdziwe adresy w sieci domowej zamiast ukrytych nazw .local
-app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns');
+// HardwareMediaKeyHandling wyłączone: przyciski multimedialne pilota (▶⏸ ⏭ ⏮) trafiają do programu jak zwykłe klawisze,
+// zamiast zatrzymywać samą muzykę
+app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns,HardwareMediaKeyHandling');
 if (!app.requestSingleInstanceLock()) { app.quit(); return; }
 
 const { createNative } = require('./native');
@@ -247,6 +249,21 @@ ipcMain.handle('native:frameSink', async (e, label, where) => {
   }
   return out;
 });
+// pilot Bluetooth: w trakcie pokazu przyciski multimedialne (i głośność, gdy pilot ich używa) działają w programie
+// także wtedy, gdy na pierwszym planie jest inne okno — i nie zmieniają przy tym głośności Windows
+const RKEYS = new Set(['MediaNextTrack', 'MediaPreviousTrack', 'MediaPlayPause', 'MediaStop', 'VolumeUp', 'VolumeDown', 'VolumeMute']);
+let remoteRegistered = [];
+function remoteKeysSet(list, wc) {
+  const { globalShortcut } = require('electron');
+  for (const k of remoteRegistered) { try { globalShortcut.unregister(k); } catch { } }
+  remoteRegistered = [];
+  for (const k of (list || []).filter(k => RKEYS.has(k))) {
+    try { if (globalShortcut.register(k, () => { try { if (!wc.isDestroyed()) wc.send('native:remoteKey', k); } catch { } })) remoteRegistered.push(k); } catch { }
+  }
+  return remoteRegistered.slice();
+}
+ipcMain.handle('native:remoteKeys', (e, list) => remoteKeysSet(list, e.sender));
+app.on('will-quit', () => { try { require('electron').globalShortcut.unregisterAll(); } catch { } });
 ipcMain.on('native:showItem', (e, p) => { try { require('electron').shell.showItemInFolder(p); } catch { } });
 
 app.on('second-instance', (e, argv) => {

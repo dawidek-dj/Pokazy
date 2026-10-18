@@ -132,6 +132,21 @@ function createNative({ cacheDir, ffmpegPath, log = () => { } }) {
     if (max) { try { await ensureDisp(p, max); } catch { } for (const f of [cp('disp', `${k}_${max}`, '.jpg'), cp('disp', k, '.jpg')]) if (await exists(f)) return f; }   // wersja do pokazu — też na żądanie
     return null;
   }
+  // miniatura slajdu dla pilota w telefonie (obrót, para zdjęć obok siebie) — tworzona tutaj, okno pokazu nic nie liczy
+  async function slideThumb(list) {
+    const parts = [];
+    for (const x of (list || []).slice(0, 2)) { const f = await cacheFile(x.path, 'thumb').catch(() => null); if (f) parts.push({ f, rot: ((Math.round(+x.rot || 0) % 360) + 360) % 360 }); }
+    if (!parts.length) return null;
+    if (parts.length === 1 && !parts[0].rot) return parts[0].f;
+    const out = path.join(cacheDir, 'thumbs', 'rs_' + crypto.createHash('sha1').update(JSON.stringify(parts)).digest('hex').slice(0, 24) + '.jpg');
+    if (await exists(out)) return out;
+    const H = 240;
+    const b = await Promise.all(parts.map(x => sharp(x.f).rotate(x.rot).resize({ height: H }).jpeg({ quality: 80 }).toBuffer({ resolveWithObject: true })));
+    if (b.length === 1) await fsp.writeFile(out, b[0].data);
+    else await sharp({ create: { width: b[0].info.width + 6 + b[1].info.width, height: H, channels: 3, background: '#000000' } })
+      .composite([{ input: b[0].data, left: 0, top: 0 }, { input: b[1].data, left: b[0].info.width + 6, top: 0 }]).jpeg({ quality: 78 }).toFile(out);
+    return out;
+  }
   // przygotuj wersję zdjęcia w danym rozmiarze (gdy trzeba) — wywoływane w kolejności pokazu
   async function ensureDisp(p, max) {
     const st = await fsp.stat(p), k = keyOf(p, st), f = cp('disp', `${k}_${max}`, '.jpg');
@@ -306,6 +321,6 @@ function createNative({ cacheDir, ffmpegPath, log = () => { } }) {
     return r.code === 0 && (await exists(f)) ? f : null;
   }
   function shutdown() { for (const w of pool) w.terminate(); }
-  return { analyze, ensureDisp, cacheFilesOf, cacheDir, exif, strip, highlights, loudness, cacheFile, probe, preparedPath, prepEnqueue, prepStatus, encoders, scan, shutdown, IMG, VID, AUD };
+  return { analyze, ensureDisp, slideThumb, cacheFilesOf, cacheDir, exif, strip, highlights, loudness, cacheFile, probe, preparedPath, prepEnqueue, prepStatus, encoders, scan, shutdown, IMG, VID, AUD };
 }
 module.exports = { createNative };

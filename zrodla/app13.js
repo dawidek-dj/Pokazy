@@ -2,14 +2,14 @@
 /* =========================================================
    Pokazanie slajdu poza kolejnością i „nie pokazuj ponownie”
    ========================================================= */
-function interject(j, skipLater) {
+function interject(j, skipLater, quiet) {
   const s = slides[j]; if (!Show.on || !s) return;
   if (skipLater && s.items) for (const it of s.items) Show.skipKeys.add(it.key);
   if (j === Show.idx) return;
   const ret = Show.returnTo != null ? Show.returnTo : Show.idx + 1;
   goto(j);
   Show.returnTo = ret; Show.interjected = j;
-  flash('Poza kolejnością — potem pokaz wraca na swoje miejsce');
+  if (!quiet) flash('Poza kolejnością — potem pokaz wraca na swoje miejsce');
   updConsole(); Remote.push();
 }
 function jumpTo(j) { if (!Show.on || !slides[j]) return; Show.returnTo = null; Show.interjected = null; goto(j); }
@@ -136,13 +136,16 @@ heartbeat(async () => {
     PhoneList.sig = sig; PhoneList.lastUp = Date.now();
     try { await fetchT('/api/thumb?key=__slides', { method: 'POST', body: new Blob([slidesListJSON()], { type: 'application/json' }) }, 8000); } catch { PhoneList.sig = ''; }
   }
-  // miniatury, o które poprosił telefon (przewijana lista)
-  if (PhoneList.req.length && !RThumb.busy && !(Show.video && !Show.video.paused) && !MV.on) {
-    const key = PhoneList.req.shift(); if (RThumb.sent.has(key)) return;
+  // miniatury, o które poprosił telefon (przewijana lista); w trakcie filmu tylko gotowe (bez dekodowania zdjęć)
+  if (PhoneList.req.length && !RThumb.busy) {
+    const cheap = (Show.video && !Show.video.paused) || MV.on;
+    const key = PhoneList.req.shift(); if (thumbFresh(key)) return;
     const s = slides.find(x => slideKey(x) === key) || (byKey.get(key) ? { items: [byKey.get(key)] } : null); if (!s) return;
     RThumb.busy = true;
-    try { const b = await slideThumbBlob(s); if (b) { await fetchT('/api/thumb?key=' + encodeURIComponent(key), { method: 'POST', body: b }, 6000); RThumb.sent.add(key); } } catch { } finally { RThumb.busy = false; }
+    try { const b = await slideThumbBlob(s, cheap); if (b) { await fetchT('/api/thumb?key=' + encodeURIComponent(key), { method: 'POST', body: b }, 6000); thumbSent(key); } } catch { } finally { RThumb.busy = false; }
   }
 });
-function phoneThumbReq(t) { for (const k of String(t || '').split(',').slice(0, 30)) if (k && !RThumb.sent.has(k) && !PhoneList.req.includes(k)) PhoneList.req.push(k); }
+// telefon prosi ponownie o miniaturę, której nie dostał (np. wypadła z pamięci serwera) — wysyłamy jeszcze raz
+const thumbFresh = k => RThumb.sent.has(k) && Date.now() - (RThumb.at.get(k) || 0) < 6000;
+function phoneThumbReq(t) { for (const k of String(t || '').split(',').slice(0, 30)) if (k && !thumbFresh(k) && !PhoneList.req.includes(k)) PhoneList.req.push(k); }
 

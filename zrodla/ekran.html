@@ -294,7 +294,8 @@ function render(st) {
     if (c.vv && c.vv[vi] != null) video.volume = Math.max(0, Math.min(1, c.vv[vi]));
     if (st.playing && video.paused) video.play().catch(() => { if (soundOn() && !video._mute) blocked(true); video.muted = true; video.play().catch(() => { }); });
     if (!st.playing && !video.paused) video.pause();
-    if (typeof st.vt === 'number' && video.readyState >= 1 && Math.abs(video.currentTime - (st.vt + 0.3)) > 1.5) { try { video.currentTime = st.vt + 0.3; } catch { } }
+    const vr = st.vr || 1; if (video.playbackRate !== vr) video.playbackRate = vr;   // film przyspieszony na laptopie — tu tak samo
+    if (typeof st.vt === 'number' && video.readyState >= 1 && Math.abs(video.currentTime - (st.vt + 0.3 * vr)) > 1.5 * vr) { try { video.currentTime = st.vt + 0.3 * vr; } catch { } }
   }
 }
 async function loop() {

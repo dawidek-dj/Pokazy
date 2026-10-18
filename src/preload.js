@@ -29,5 +29,7 @@ contextBridge.exposeInMainWorld('native', {
   onOpenProject: cb => ipcRenderer.on('native:openProject', (e, id) => cb(id)),
   platform: process.platform,
   displays: () => ipcRenderer.invoke('native:displays'),
+  remoteKeys: list => ipcRenderer.invoke('native:remoteKeys', list),
+  onRemoteKey: cb => ipcRenderer.on('native:remoteKey', (e, k) => cb(k)),
   frameSink: (label, where) => ipcRenderer.invoke('native:frameSink', label, where || 'tv'),
 });

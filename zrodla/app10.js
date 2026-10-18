@@ -3,7 +3,11 @@
    Miniatury dla telefonu: bieżące i kilka następnych zdjęć
    (miniatury w organizerze wczytują się leniwie — tu bierzemy je z pamięci albo tworzymy)
    ========================================================= */
-const RThumb = { sent: new Set(), busy: false };
+const RThumb = { sent: new Set(), at: new Map(), busy: false };
+// aplikacja: miniatury dla telefonu tworzy sama z plików (wystarczy jej lista plików slajdów) — okno pokazu nic nie liczy
+const RPATHS = { sig: '', t: 0, ok: false, keys: new Set() };
+const thumbReady = k => RThumb.sent.has(k) || (RPATHS.ok && RPATHS.keys.has(k));
+const thumbSent = k => { RThumb.sent.add(k); RThumb.at.set(k, Date.now()); };
 const slideKey = s => s && s.items ? s.items.map(i => i.key).join('+') : '';
 function drawThumb(el, w0, h0, rot, max = 360) {
   const sw = ((rot || 0) % 180 + 180) % 180 === 90;
@@ -25,19 +29,20 @@ async function videoFrame(file) {
     return drawThumb(v, v.videoWidth, v.videoHeight, 0, 360);
   } finally { v.removeAttribute('src'); v.load(); URL.revokeObjectURL(url); }
 }
-async function thumbCanvas(it) {
+async function thumbCanvas(it, cheap) {
   const rot = (O[it.key] || {}).rot || 0;
   let blob = null;
   try { if (it.thumbURL) blob = await (await fetch(it.thumbURL)).blob(); } catch { }
   if (!blob) { try { blob = await idb.get('thumbs', it.key); } catch { } }
   if (blob) { const u = URL.createObjectURL(blob); try { const im = await imgFrom(u); return drawThumb(im, im.naturalWidth, im.naturalHeight, rot); } finally { URL.revokeObjectURL(u); } }
+  if (cheap) throw new Error('w trakcie filmu tylko gotowe miniatury');
   if (it.kind === 'image') { const im = await imgFrom(await displayURL(it)); return drawThumb(im, im.naturalWidth, im.naturalHeight, rot); }
   if (Show.on) throw new Error('bez dekodowania filmu w trakcie pokazu');   // miniatura filmu powstaje przy analizie
   const c = await videoFrame(it.file); return rot ? drawThumb(c, c.width, c.height, rot) : c;
 }
-async function slideThumbBlob(s) {
+async function slideThumbBlob(s, cheap) {
   const cs = [];
-  for (const it of s.items) { try { cs.push(await thumbCanvas(it)); } catch { } }
+  for (const it of s.items) { try { cs.push(await thumbCanvas(it, cheap)); } catch { } }
   if (!cs.length) return null;
   let out = cs[0];
   if (cs.length > 1) {   // para: dwa obok siebie
@@ -50,25 +55,36 @@ async function slideThumbBlob(s) {
 }
 heartbeat(async () => {
   if (!Show.on || !Remote.ok || !Remote.clients || RThumb.busy) return;
-  if ((Show.video && !Show.video.paused) || MV.on) return;   // w trakcie filmu nic nie liczymy w tle — płynność
+  // w trakcie filmu i teledysku tylko gotowe miniatury (bez dekodowania zdjęć) — płynność
+  const cheap = (Show.video && !Show.video.paused) || MV.on;
   // najpierw bieżący slajd, potem pięć kolejnych
   for (let j = Show.idx; j < Math.min(slides.length, Show.idx + 6); j++) {
     const s = slides[j], key = slideKey(s);
-    if (!key || RThumb.sent.has(key)) continue;
+    if (!key || thumbReady(key) || (RThumb.skip && RThumb.skip.has(key))) continue;
     RThumb.busy = true;
     try {
-      const b = await slideThumbBlob(s);
-      if (b) { await fetchT('/api/thumb?key=' + encodeURIComponent(key), { method: 'POST', body: b }, 6000); RThumb.sent.add(key); Remote.push(); }
-      else RThumb.sent.add(key);
+      const b = await slideThumbBlob(s, cheap);
+      if (b) { await fetchT('/api/thumb?key=' + encodeURIComponent(key), { method: 'POST', body: b }, 6000); thumbSent(key); Remote.push(); }
+      else if (!cheap) thumbSent(key);
+      else (RThumb.skip = RThumb.skip || new Set()).add(key), setTimeout(() => RThumb.skip.delete(key), 8000);
     } catch { } finally { RThumb.busy = false; }
     return;
   }
+});
+// lista plików slajdów dla aplikacji (miniatury na telefonie robi ona sama — także w trakcie filmu)
+heartbeat(async () => {
+  if (!NATIVE || !Show.on || !Remote.ok || !Remote.clients || Date.now() - RPATHS.t < 4000) return;
+  RPATHS.t = Date.now();
+  const items = [];
+  for (const s of slides) if (s.items && s.items.every(it => it.file && it.file.native && it.file.fullPath)) items.push({ k: slideKey(s), p: s.items.slice(0, 2).map(it => ({ path: it.file.fullPath, rot: (O[it.key] || {}).rot || 0 })) });
+  const body = JSON.stringify({ items }); if (body === RPATHS.sig) return;
+  try { const r = await fetch(`/native/rpaths?t=${NATIVE.token}`, { method: 'POST', body }); if (r.ok) { RPATHS.sig = body; RPATHS.ok = true; RPATHS.keys = new Set(items.map(x => x.k)); Remote.push(); } } catch { }
 });
 function nextSlidesState() {
   const out = [];
   for (let j = Show.idx + 1; j < Math.min(slides.length, Show.idx + 6); j++) {
     const s = slides[j], key = slideKey(s), it = s.items && s.items[0];
-    out.push({ i: j, key, pair: !!(s.items && s.items.length > 1), ready: RThumb.sent.has(key), kind: it ? it.kind : 'card', label: it ? (timeIsApprox(it) ? slideLabel(s).split(',')[0] : fmtHM(s.t)) : slideLabel(s).replace('Plansza: ', ''), name: it ? s.items.map(x => x.name).join(' + ') : '' });
+    out.push({ i: j, key, pair: !!(s.items && s.items.length > 1), ready: thumbReady(key), kind: it ? it.kind : 'card', label: it ? (timeIsApprox(it) ? slideLabel(s).split(',')[0] : fmtHM(s.t)) : slideLabel(s).replace('Plansza: ', ''), name: it ? s.items.map(x => x.name).join(' + ') : '' });
   }
   return out;
 }
@@ -230,7 +246,7 @@ function showGuestQR(sec) {
   Remote.push();
 }
 function toggleGuestQR() { if ($('#qrBoard').classList.contains('on')) hideGuestQR(); else showGuestQR(30); }
-function hideGuestQR() { const box = $('#qrBoard'); box.classList.remove('on'); $('#show').classList.remove('qron'); setTimeout(() => { if (!box.classList.contains('on')) box.hidden = true; }, 700); Remote.push(); }
+function hideGuestQR() { const box = $('#qrBoard'); const np = $('#nowPlay'); if (np && $('#show').classList.contains('qron')) np.classList.remove('on'); box.classList.remove('on'); $('#show').classList.remove('qron'); setTimeout(() => { if (!box.classList.contains('on')) box.hidden = true; }, 700); Remote.push(); }
 
 // ustawienia
 (() => {
@@ -243,6 +259,6 @@ function hideGuestQR() { const box = $('#qrBoard'); box.classList.remove('on'); 
   ma.onchange = () => { S.mvAuto = ma.checked; saveS(); };
   $('#guestQrBtn').onclick = openGuestQR;
   $('#cGuestQR').onclick = () => toggleGuestQR();
-  $('#qrBoard').addEventListener('click', hideGuestQR);
+  $('#qrBoard').addEventListener('click', e => { e.stopPropagation(); hideGuestQR(); });   // bez wysuwania paska z przyciskami
 })();
 

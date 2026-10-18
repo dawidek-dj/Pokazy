@@ -44,6 +44,8 @@ function showLockChip() {
 }
 function lockGuard(e) {
   if (!Lock.on) return;
+  // pilot Bluetooth (nauczone przyciski i przyciski multimedialne) działa także w trybie bezpiecznym
+  if (e.type === 'keydown' && typeof btrKey === 'function' && btrKey(e)) return;
   const t = e.target;
   if (t && t.closest && t.closest('#lockOverlay')) return;          // pole na kod na panelu laptopa
   // okno na telewizorze musi dać się jeszcze przełączyć na pełny ekran

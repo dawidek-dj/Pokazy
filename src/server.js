@@ -166,6 +166,12 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
       if (p === '/native/rtcanswer' && req.method === 'POST') { const id = String(q.get('id') || ''), e = (ST.rtc || new Map()).get(id); if (e) { e.answer = (await readBody(req)).toString('utf8'); } return json(res, { ok: !!e }); }
       if (p === '/native/tvclients') { const tnow = Date.now(), L = [...(ST.tvc || new Map()).entries()].filter(([, v]) => tnow - v.last < 4500).map(([id, v]) => ({ id, name: v.name, audio: v.audio, ms: v.ms, mid: v.mid, code: v.code })); return json(res, { ok: true, list: L }); }
       if (p === '/native/castmusic' && req.method === 'POST') { const d = JSON.parse((await readBody(req)).toString('utf8') || '{}'); if (d.path) roots.add(path.dirname(d.path)); ST.castMusic = { path: d.path || '', radio: d.radio || '' }; return json(res, { ok: true }); }
+      // pliki wszystkich slajdów — miniatury dla pilota w telefonie tworzy wtedy aplikacja (szybko, także w trakcie filmu)
+      if (p === '/native/rpaths' && req.method === 'POST') {
+        const d = JSON.parse((await readBody(req)).toString('utf8') || '{}'), m = new Map();
+        for (const x of (d.items || []).slice(0, 20000)) if (x && x.k && Array.isArray(x.p) && x.p.every(y => y && y.path && inRoots(y.path))) m.set(x.k, x.p);
+        ST.rpaths = m; return json(res, { ok: true, n: m.size });
+      }
       if (p === '/native/castmedia' && req.method === 'POST') {
         const d = JSON.parse((await readBody(req)).toString('utf8') || '{}');
         const m = ST.cast instanceof Map ? ST.cast : new Map();
@@ -315,7 +321,7 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
       }
       if (p === '/api/thumb' && local && req.method === 'POST') {
         const data = await readBody(req), key = q.get('key');
-        if (key) { ST.thumbs.delete(key); ST.thumbs.set(key, data); while (ST.thumbs.size > 80) ST.thumbs.delete(ST.thumbs.keys().next().value); return json(res, { ok: true }); }
+        if (key) { ST.thumbs.delete(key); ST.thumbs.set(key, data); while (ST.thumbs.size > 600) ST.thumbs.delete(ST.thumbs.keys().next().value); return json(res, { ok: true }); }
         ST.thumb = data; ST.rev++; return json(res, { ok: true });
       }
       if (p.startsWith('/api/g/')) {
@@ -393,7 +399,13 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
         }
         if (p === '/api/r/thumb') {
           const key = q.get('key');
-          if (key) { const t = ST.thumbs.get(key); const ct = key.startsWith('__') ? 'application/json; charset=utf-8' : 'image/jpeg'; return t && t.length ? send(res, 200, ct, t, head) : send(res, 204, ct, null, head); }
+          if (key) {
+            const t = ST.thumbs.get(key); const ct = key.startsWith('__') ? 'application/json; charset=utf-8' : 'image/jpeg';
+            if (t && t.length) return send(res, 200, ct, t, head);
+            const rp = native && ST.rpaths && ST.rpaths.get(key);
+            if (rp) { const f = await native.slideThumb(rp).catch(() => null); if (f) return sendFile(req, res, f, 'image/jpeg'); }
+            return send(res, 204, ct, null, head);
+          }
           return ST.thumb.length ? send(res, 200, 'image/jpeg', ST.thumb, head) : send(res, 204, 'image/jpeg', null, head);
         }
       }

@@ -200,7 +200,8 @@ async function guestUpload(c) {
   clearTimeout(GU.noteT); GU.noteT = setTimeout(() => {
     for (const [w, k] of GU.note) {
       const msg = `📷 ${k === 1 ? 'Nowe zdjęcie' : `Nowe zdjęcia (${k})`} ${w === 'gościa' ? 'od gościa' : '— ' + w}${S.guestUploadAuto ? '' : ' · czeka na akceptację'}`;
-      flash(msg); alertPulse('gphoto', 'info', msg, 60000);
+      if (!(Remote.clients > 0) || TV.on) flash(msg);   // z pilotem w telefonie wiadomość idzie tylko na telefon, nie na ekran dla gości
+      alertPulse('gphoto', 'info', msg, 60000);
     }
     GU.note.clear();
   }, 2500);
@@ -221,7 +222,8 @@ nextSlide = function () {
   while (Show.on && Show.liveQueue && Show.liveQueue.length) {
     const it = byKey.get(Show.liveQueue.shift()); if (!it) continue;
     const j = slides.findIndex(s => s.items && s.items.includes(it));
-    if (j >= 0 && j !== Show.idx) { interject(j, true); return; }
+    // bez napisu przy każdym zdjęciu — jedna krótka wzmianka na serię (najwyżej raz na 10 minut); muzyka gra dalej
+    if (j >= 0 && j !== Show.idx) { if (Date.now() - (GU.liveNoteAt || 0) > 600000) { GU.liveNoteAt = Date.now(); setTimeout(() => flash('📷 Zdjęcia od gości'), 400); } interject(j, true, true); return; }
   }
   return nextSlideP();
 };

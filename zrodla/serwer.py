@@ -125,7 +125,7 @@ class H(BaseHTTPRequestHandler):
                 if q.get('key'):
                     with LOCK:
                         th = ST['thumbs']; th.pop(q['key'], None); th[q['key']] = data
-                        while len(th) > 80: th.pop(next(iter(th)))
+                        while len(th) > 600: th.pop(next(iter(th)))
                     return self.json({'ok': True})
                 with LOCK:
                     ST['thumb'] = data; ST['rev'] += 1

@@ -155,11 +155,13 @@ function openSeries() {
 function openSeriesCompare(g) {
   const b = openModal(); b.classList.add('wide');
   const sel = new Set(g.filter(x => x.inShow).map(x => x.key));
-  if (!sel.size) sel.add(g[0].key);
-  b.innerHTML = `<h3>Porównaj i zostaw najlepsze</h3><p class="hint">Kliknij zdjęcie, żeby je zaznaczyć do pokazu (możesz zostawić kilka). 🔍 albo dwuklik — otwórz na cały ekran i przybliżaj kółkiem myszy.</p><div class="sercmp" id="scG"></div>
-    <div class="row" style="justify-content:space-between;flex-wrap:wrap"><button class="btn small ghost" id="scBack">‹ Wszystkie serie</button><button class="btn small primary" id="scOk"></button></div>`;
-  const G = b.querySelector('#scG'), ok = b.querySelector('#scOk');
-  const upd = () => { for (const c of G.children) c.classList.toggle('on', sel.has(c.dataset.key)); ok.textContent = `Zostaw zaznaczone (${sel.size}) · schowaj resztę (${g.length - sel.size})`; ok.disabled = !sel.size; };
+  // na start pierwsze ujęcie — chyba że wcześniej świadomie schowano całą serię
+  if (!sel.size && !g.some(x => (O[x.key] || {}).hidden === true)) sel.add(g[0].key);
+  b.innerHTML = `<h3>Porównaj i zostaw najlepsze</h3><p class="hint">Kliknij zdjęcie, żeby je zaznaczyć do pokazu (możesz zostawić kilka albo żadnego — wtedy cała seria zostanie schowana). 🔍 albo dwuklik — otwórz na cały ekran i przybliżaj kółkiem myszy.</p><div class="sercmp" id="scG"></div>
+    <div class="row" style="justify-content:space-between;flex-wrap:wrap"><button class="btn small ghost" id="scBack">‹ Wszystkie serie</button><span class="row" style="gap:8px;flex-wrap:wrap"><button class="btn small ghost" id="scNone">Odznacz wszystkie</button><button class="btn small primary" id="scOk"></button></span></div>`;
+  const G = b.querySelector('#scG'), ok = b.querySelector('#scOk'), none = b.querySelector('#scNone');
+  none.onclick = () => { sel.clear(); upd(); };
+  const upd = () => { for (const c of G.children) c.classList.toggle('on', sel.has(c.dataset.key)); ok.textContent = sel.size ? `Zostaw zaznaczone (${sel.size}) · schowaj resztę (${g.length - sel.size})` : `Schowaj całą serię (${pl(g.length, 'ujęcie', 'ujęcia', 'ujęć')})`; ok.classList.toggle('danger', !sel.size); none.hidden = !sel.size; };
   g.forEach((x, i) => {
     const c = document.createElement('div'); c.className = 'sccard'; c.dataset.key = x.key;
     c.innerHTML = `<img alt=""><span class="sct"><b></b><small></small></span><button class="zbtn" title="Powiększ">🔍</button><span class="chk">✓</span>`;
@@ -175,7 +177,7 @@ function openSeriesCompare(g) {
   ok.onclick = async () => {
     await snapPoint('Przed wyborem z serii', true);
     for (const x of g) { const v = ov(x.key); if (sel.has(x.key)) { if (v.hidden === true) delete v.hidden; v.keepThin = true; } else v.hidden = true; cleanOv(x.key); }
-    saveO(); refresh(); toast(`Zostawiono ${sel.size} z ${g.length} ujęć.`); openSeries();
+    saveO(); refresh(); toast(sel.size ? `Zostawiono ${sel.size} z ${g.length} ujęć.` : `Cała seria schowana (${pl(g.length, 'ujęcie', 'ujęcia', 'ujęć')}) — nic nie zostało usunięte.`); openSeries();
   };
   upd();
 }

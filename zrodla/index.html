@@ -43,6 +43,15 @@ main{overflow:auto;position:relative}
 .btn:hover{border-color:var(--gold);background:#3E3043}
 .btn.primary{background:var(--gold);border-color:var(--gold);color:#2A1D22;font-weight:600}
 .btn.primary:hover{background:var(--gold2)}
+.btrlist{display:grid;gap:8px}.btrgrp>.btrrow{margin-top:6px}.btrgrp>summary{cursor:pointer;color:var(--gold);font-size:13px;padding:4px 2px;list-style-position:inside}.btrgrp[open]>summary{margin-bottom:2px}
+.btrrow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 8px;padding:8px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--line)}
+.btrrow .bl{display:grid;min-width:0}.btrrow .bl b{font-weight:500}.btrrow .bl small{color:var(--muted);font-size:12px}
+.btrrow .keys{grid-column:1/-1;display:flex;gap:4px;flex-wrap:wrap}.btrrow .keys:empty{display:none}
+.kchip{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 9px;border-radius:999px;border:1px solid var(--gold);color:var(--gold);font-size:12px}
+.kchip button{border:0;background:none;color:inherit;cursor:pointer;font-size:14px;line-height:1;padding:0 4px}
+.btrrow .btn.learning{border-color:var(--gold);color:var(--gold);animation:btrpulse 1.2s ease-in-out infinite}
+@keyframes btrpulse{50%{opacity:.55}}
+.btn.primary.danger{background:#b4533f;border-color:#b4533f;color:#fff}.btn.primary.danger:hover{background:#c4644f}
 .btn.small{padding:5px 12px;font-size:13px}
 .btn.ghost{background:none}
 .btn:disabled{opacity:.45;cursor:default}
@@ -988,6 +997,16 @@ body.showing #yt-holder{z-index:99}
         <p class="hint">Telefon w tej samej sieci Wi-Fi (albo laptop podłączony do hotspotu telefonu) steruje pokazem: następne i poprzednie, pauza, przewijanie i głośność filmów, muzyka, ulubione. Na telefonie widać też nazwę pliku.</p>
         <button class="btn small" id="remoteBtn" style="justify-self:start">Połącz telefon</button>
         <p class="hint" id="remoteStatus"></p>
+      </div>
+    </details>
+
+    <details class="sec" id="btrSec">
+      <summary>Pilot Bluetooth</summary>
+      <div class="sec-body">
+        <p class="hint">Pilot połączony z laptopem przez Bluetooth (prezenter, pilot multimedialny, pilot do zdjęć). Najpierw sparuj go w Windows (Ustawienia → Bluetooth i urządzenia → Dodaj urządzenie). Przyciski ⏭ ⏮ ⏯, strzałki, Page Up/Down, spacja i Enter działają od razu. Każdy przycisk pilota możesz przypisać do dowolnego działania z listy (te same co w legendzie skrótów — klawisz L): kliknij „Naucz” i naciśnij przycisk na pilocie. Możesz nauczyć kilka pilotów.</p>
+        <div class="btrlist" id="btrList"></div>
+        <p class="hint" id="btrInfo">Naciśnij dowolny przycisk na pilocie — tutaj zobaczysz, co robi.</p>
+        <button class="btn small ghost" id="btrReset" type="button" style="justify-self:start" hidden>Przywróć przyciski domyślne</button>
       </div>
     </details>
 

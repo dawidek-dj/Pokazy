@@ -968,7 +968,7 @@ function onKey(e) {
     q: () => toggleBreak('Przerwa'), w: () => toggleBreak('Przerwa na papierosa'), p: () => { const sh = $('#show'); if (sh.classList.contains('ui')) hideUI(); else pokeUI(); },
     ' ': () => MV.on ? mvToggle() : setPlaying(!Show.playing), enter: () => MV.on ? mvToggle() : setPlaying(!Show.playing), mediaplaypause: () => MV.on ? mvToggle() : setPlaying(!Show.playing),
     escape: () => MV.on ? mvStop() : Zoom.m ? resetZoom() : TV.on ? null : exitShow(), t: () => switchMode(TV.on ? 'single' : 'tv'), m: () => Music.toggle(), n: () => e.shiftKey ? Music.prev() : Music.next(), z: () => showRemain(),
-    a: () => Music.prev(), d: () => Music.next(), g: () => toggleGuestQR(), r: rotateCurrent, h: hideCurrent, f: toggleFull,
+    a: () => Music.prev(), d: () => Music.next(), s: () => videoSpeed(), g: () => toggleGuestQR(), r: rotateCurrent, h: hideCurrent, f: toggleFull,
     home: () => goto(0), end: () => goto(slides.length - 1),
   };
   if (map[k] && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); map[k](); }
