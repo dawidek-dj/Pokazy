@@ -651,7 +651,7 @@ function setPlaying(p, quiet) {
     else if (!Show.video && !(slides[Show.idx] && slides[Show.idx].type === 'end')) nextSlide();   // plansza końcowa zostaje
     kbs.forEach(k => k.style.animationPlayState = 'running');
   }
-  if (!quiet) flash(p ? 'Odtwarzanie' : 'Pauza');
+  // bez napisu „Pauza” / „Odtwarzanie” na ekranie — stan widać na przycisku w panelu i na pilocie
   updHud();
 }
 function prefetch(i) {
