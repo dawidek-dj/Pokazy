@@ -257,7 +257,7 @@ heartbeat(async () => {
 const showGuestQRP = showGuestQR;
 showGuestQR = function (sec) {
   const feats = [S.guestOn && 'zaproponuj piosenkę', NATIVE && S.guestUpload && 'wyślij zdjęcia i filmy', NATIVE && S.guestGallery && 'przeglądaj i pobieraj zdjęcia'].filter(Boolean);
-  if (!feats.length) { S.guestOn = true; saveS(); $('#sGuestOn').checked = true; feats.push('zaproponuj piosenkę'); }
+  if (!feats.length && !(NATIVE && S.guestWish)) { S.guestOn = true; saveS(); $('#sGuestOn').checked = true; feats.push('zaproponuj piosenkę'); }
   const box = $('#qrBoard');
   box.querySelector('.qrb-t b').textContent = feats.length > 1 ? 'Dołącz do pokazu 📱' : S.guestOn ? 'Zaproponuj piosenkę 🎵' : feats[0].startsWith('wyślij') ? 'Wyślij zdjęcia 📷' : 'Galeria zdjęć 🖼';
   box.querySelector('.qrb-t span').textContent = 'Zeskanuj kod aparatem telefonu i ' + feats.join(', ') + '.';

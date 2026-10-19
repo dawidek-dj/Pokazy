@@ -78,7 +78,26 @@ body.tablet .gbox{margin-bottom:0}
 .alt.past{opacity:.45}.alt.cur .im{box-shadow:0 0 0 3px var(--sage)}.alt.skip{opacity:.3}.alt.pair .im{box-shadow:0 0 0 2px var(--gold)}
 .retinfo{font-size:14px;color:var(--gold2);padding:6px 10px;border-radius:10px;background:#2F2519}
 #qRes{display:grid;gap:6px}
-.gbox{display:grid;gap:8px;padding:10px 12px;border-radius:14px;background:#2F2519;border:1px solid var(--gold)}
+.gbox{display:grid;gap:8px;padding:10px 12px;border-radius:14px;background:#2F2519;border:1px solid var(--gold);scroll-margin-top:8px}
+.gpgrid .g.sel .im{outline:3px solid var(--gold2);outline-offset:-3px;position:relative}
+.gpgrid .g .im{position:relative}.gpgrid .g.sel .im::after{content:'✓';position:absolute;right:4px;top:2px;width:22px;height:22px;border-radius:50%;background:var(--gold);color:#2A1D22;display:grid;place-items:center;font-weight:700;font-size:14px}
+.gpsel{display:flex;gap:6px}.gpsel button{flex:1;min-height:40px;font-size:14px}
+.gpfrom{display:grid;gap:4px}.gpfrom .fr{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)}.gpfrom .fr span{flex:1}.gpfrom .fr button{min-height:32px;font-size:12px;padding:0 10px}
+.wl{display:grid;gap:6px}
+.wc{display:grid;gap:6px;padding:8px 10px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
+.wc.sel{border-color:var(--gold2);box-shadow:0 0 0 2px rgba(237,212,160,.25)}
+.wc p{margin:0;font:italic 500 17px/1.35 var(--serif);max-height:9.6em;overflow:auto}
+.flashbox{animation:flb 1.6s ease 2}@keyframes flb{50%{box-shadow:0 0 0 4px var(--gold2)}}
+.alert .go{min-height:36px;flex:none;padding:0 12px;background:var(--gold);color:#2A1D22;border-color:var(--gold)}.wc small{color:var(--muted);font-size:12px}
+.wc .row button{min-height:36px;font-size:14px;padding:0 10px}.wc .row button:first-child{flex:1}
+.gmod{font-size:14px}.gmod summary{cursor:pointer;color:var(--muted);padding:4px 0}.gmod[open]{display:grid;gap:8px}
+.gml{display:grid;gap:4px}.gml .fr{display:flex;gap:8px;align-items:center;font-size:13px}.gml .fr span{flex:1}.gml .fr button{min-height:32px;font-size:12px;padding:0 10px}
+.gpop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(10,6,12,.55);padding:20px}
+.gpop .gpi{display:grid;gap:8px;width:min(360px,100%);padding:18px 16px;border-radius:18px;background:#2F2519;border:2px solid var(--gold2);box-shadow:0 20px 60px rgba(0,0,0,.6);text-align:center;animation:pop .35s ease}
+.gpop b{font:italic 500 24px/1.2 var(--serif);color:var(--gold2)}.gpop small{color:var(--text);font-size:15px}
+.gpop .row button{flex:1;min-height:48px}
+.remain{position:relative}.remain .rmx{position:absolute;right:6px;top:6px;min-height:30px;padding:0 10px;font-size:12px}
+.rmshow{min-height:38px;font-size:14px;justify-self:start;padding:0 14px}
 .gi .row{flex-wrap:wrap}
 .gi .row button{flex:1 1 40%}
 #mvLink{font-size:18px;padding:16px;min-height:58px;border-radius:14px}
@@ -121,6 +140,7 @@ button:disabled{opacity:.35}
 .alert{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:12px;font-size:15px;background:#3A2F1E;border:1px solid var(--gold);color:var(--gold2);animation:pop .35s ease}
 .alert.warn{background:#3B2227;border-color:var(--rose);color:#F6D3D6}
 .alert.crit{background:#5A1F28;border-color:#ff8a95;color:#fff;font-weight:500}
+.alert.cue{background:#4A3A12;border:2px solid var(--gold2);color:#fff;font-size:18px;font-weight:600;padding:14px 14px;box-shadow:0 0 0 4px rgba(216,184,120,.18)}
 .alert span{flex:1}
 .alert button{min-height:36px;flex:none;padding:0 12px;background:rgba(0,0,0,.2)}
 @keyframes pop{from{transform:scale(.96);opacity:0}}
@@ -155,15 +175,29 @@ svg{width:26px;height:26px}
 
 <div class="conn" id="conn" hidden></div>
 <div class="remain" id="remain" hidden></div>
+<button class="rmshow" id="remainShow" type="button" hidden>⏱ Pokaż, ile zostało do końca</button>
 <div class="gbox" id="gsec" hidden>
   <div class="row" style="align-items:center"><span class="lbl" id="gHead" style="flex:1">Prośby gości</span></div>
   <div class="glist" id="glist"></div>
   <div class="gpbox" id="gpBox" hidden>
     <div class="row" style="align-items:center"><span class="lbl" id="gpHead" style="flex:1">📷 Zdjęcia od gości</span><button data-c="gpaccall" style="flex:none;min-height:36px;font-size:13px">✓ Wszystkie</button></div>
     <div class="gpgrid" id="gpGrid"></div>
+    <div class="gpsel" id="gpSel" hidden><button class="play" id="gpSelOk" type="button">✓ Zaznaczone</button><button id="gpSelNo" type="button">✕ Odrzuć zaznaczone</button></div>
+    <div class="gpfrom" id="gpFrom"></div>
+  </div>
+  <div class="gpbox" id="wBox" hidden>
+    <div class="row" style="align-items:center"><span class="lbl" id="wHead" style="flex:1">💌 Życzenia od gości</span><button data-c="waccall" style="flex:none;min-height:36px;font-size:13px">✓ Wszystkie</button></div>
+    <div class="wl" id="wList"></div>
+    <div class="gpsel" id="wSel" hidden><button class="play" id="wSelOk" type="button">✓ Zaznaczone</button><button id="wSelNo" type="button">✕ Odrzuć zaznaczone</button></div>
   </div>
   <div class="row"><button data-c="gqr" id="bQR">📱 Pokaż gościom kod QR (30 s)</button><button data-c="gqrhide" id="bQRHide" hidden>Ukryj kod</button></div>
+  <details class="gmod" id="gMod"><summary>🛡 Nadużycia: blokowanie gości, nowy kod QR</summary>
+    <p class="tip">Przy każdym zdjęciu, życzeniach i prośbie jest 🚫 — blokuje ten konkretny telefon (także gdy gość się nie podpisał). Nowy kod QR odcina wszystkich ze starym kodem.</p>
+    <div class="gml" id="gBlk"></div>
+    <button id="gKey" type="button">🔑 Zmień kod QR dla gości</button>
+  </details>
 </div>
+<div class="gpop" id="gPop" hidden><div class="gpi"><b id="gPopT"></b><small id="gPopS"></small><div class="row"><button class="play" id="gPopGo" type="button">👀 Przejrzyj</button><button id="gPopNo" type="button">Później</button></div></div></div>
 <div class="alerts" id="alerts"></div>
 <div class="msg" id="noKey" hidden><b>Brak kodu pilota.</b><br>Na laptopie otwórz „Pilot w telefonie” i zeskanuj kod QR aparatem telefonu.</div>
 <div class="msg" id="offline" hidden><b>Brak połączenia z laptopem.</b><br>Sprawdź, czy okno pokazu na laptopie jest otwarte, a telefon i laptop są w tej samej sieci Wi-Fi (albo laptop jest podłączony do hotspotu tego telefonu).</div>
@@ -565,24 +599,89 @@ function renderNext(list) {
   }
 }
 const seenGP = new Set(); let gpInit = false;
+// zdjęcia od gości: dotknięcie zdjęcia zaznacza (kilka naraz), ✓ / ✕ przy każdym, 🚫 blokuje telefon nadawcy
+const GPS = new Set();
 function renderGPhotos(list) {
   $('#gpBox').hidden = !list.length; $('#gpHead').textContent = `📷 Zdjęcia od gości do akceptacji: ${list.length}`;
-  let fresh = false; for (const g of list) if (!seenGP.has(g.key)) { seenGP.add(g.key); if (gpInit) fresh = true; } gpInit = true;
-  if (fresh) buzz('warn');
+  let fresh = 0; for (const g of list) if (!seenGP.has(g.key)) { seenGP.add(g.key); if (gpInit) fresh++; } gpInit = true;
+  if (fresh) { buzz('warn'); gPopAdd('p', fresh); }
+  for (const k of [...GPS]) if (!list.some(g => g.key === k)) GPS.delete(k);
+  gpSelUpd();
+  // nadawcy — blokada telefonu
+  const by = new Map(); for (const g of list) { const k = g.gid || '?'; const e = by.get(k) || { gid: g.gid, from: g.from, n: 0 }; e.n++; by.set(k, e); }
+  const fsig = [...by.values()].map(e => e.gid + e.n).join('|'), F = $('#gpFrom');
+  if (F.dataset.sig !== fsig) { F.dataset.sig = fsig; F.replaceChildren(...[...by.values()].filter(e => e.gid).map(e => { const r = document.createElement('div'); r.className = 'fr'; r.innerHTML = '<span></span><button type="button">🚫 Zablokuj</button>'; r.firstChild.textContent = `${e.from ? 'od: ' + e.from : 'bez podpisu'} — ${e.n} ${e.n === 1 ? 'plik' : e.n % 10 >= 2 && e.n % 10 <= 4 && (e.n % 100 < 10 || e.n % 100 >= 20) ? 'pliki' : 'plików'}`; r.lastChild.onclick = () => gBlock(e.gid, e.from); return r; })); }
   const box = $('#gpGrid'), sig = list.map(g => g.key).join('|'); if (box.dataset.sig === sig) return; box.dataset.sig = sig; box.replaceChildren();
   const want = [];
   for (const g of list) {
-    const d = document.createElement('div'); d.className = 'g';
+    const d = document.createElement('div'); d.className = 'g' + (GPS.has(g.key) ? ' sel' : '');
     d.innerHTML = '<div class="im"></div><small></small><div class="row"><button class="play">✓</button><button>✕</button></div>';
     const im = d.querySelector('.im'), url = `/api/r/thumb?k=${encodeURIComponent(key)}&key=${encodeURIComponent(g.key)}`;
-    const load = n => { const i = new Image(); i.onload = () => { im.style.backgroundImage = `url("${i.src}")`; }; i.onerror = () => { if (n < 6) setTimeout(() => load(n + 1), 2500); }; i.src = url + '&r=' + n; };
+    const load = n => { const i = new Image(); i.onload = () => { im.style.backgroundImage = `url("${i.src}")`; }; i.onerror = () => { if (n < 30 && im.isConnected) setTimeout(() => load(n + 1), 2500); }; i.src = url + '&r=' + n; };
     load(0); want.push(g.key);
     d.querySelector('small').textContent = (g.from || 'gość') + (g.kind === 'video' ? ' · film' : '');
+    im.onclick = () => { if (GPS.has(g.key)) GPS.delete(g.key); else GPS.add(g.key); d.classList.toggle('sel', GPS.has(g.key)); gpSelUpd(); };
     const [a, r] = d.querySelectorAll('.row button'); a.onclick = () => send('gpacc', '', g.key); r.onclick = () => send('gprej', '', g.key);
     box.append(d);
   }
   if (want.length) send('thumbs', '', want.join(','));
 }
+function gpSelUpd() { $('#gpSel').hidden = !GPS.size; $('#gpSelOk').textContent = `✓ Zaznaczone do pokazu (${GPS.size})`; }
+$('#gpSelOk').onclick = () => { if (GPS.size) { send('gpsel', '', [...GPS].join(',')); GPS.clear(); gpSelUpd(); $('#gpGrid').dataset.sig = ''; } };
+$('#gpSelNo').onclick = () => { if (GPS.size && confirm(`Odrzucić zaznaczone (${GPS.size})?`)) { send('gprejsel', '', [...GPS].join(',')); GPS.clear(); gpSelUpd(); $('#gpGrid').dataset.sig = ''; } };
+function gBlock(gid, name) { if (!gid) return; if (confirm(`Zablokować ${name ? '„' + name + '”' : 'tego gościa (bez podpisu)'}? Z tego telefonu nic już nie przyjdzie — jego oczekujące zdjęcia, życzenia i prośby znikną.`)) send('gblock', '', gid + '\n' + (name || '')); }
+// życzenia od gości
+const WS = new Set(), seenW = new Set(); let wInit = false;
+function renderWishes(s) {
+  const list = s.wishes || [];
+  $('#wBox').hidden = !list.length; $('#wHead').textContent = `💌 Życzenia od gości do akceptacji: ${list.length}`;
+  let fresh = 0; for (const w of list) if (!seenW.has(w.id)) { seenW.add(w.id); if (wInit) fresh++; } wInit = true;
+  if (fresh) { buzz('warn'); gPopAdd('w', fresh); }
+  for (const k of [...WS]) if (!list.some(w => w.id === k)) WS.delete(k);
+  wSelUpd();
+  const box = $('#wList'), sig = list.map(w => w.id).join('|'); if (box.dataset.sig === sig) return; box.dataset.sig = sig; box.replaceChildren();
+  for (const w of list) {
+    const d = document.createElement('div'); d.className = 'wc' + (WS.has(w.id) ? ' sel' : '');
+    d.innerHTML = '<p></p><small></small><div class="row"><button class="play" type="button">✓ Na ekran</button><button type="button">✕</button>' + (w.gid ? '<button type="button" title="Zablokuj ten telefon">🚫</button>' : '') + '</div>';
+    d.querySelector('p').textContent = `„${w.text}”`; d.querySelector('small').textContent = w.from ? '— ' + w.from : 'bez podpisu';
+    d.querySelector('p').onclick = () => { if (WS.has(w.id)) WS.delete(w.id); else WS.add(w.id); d.classList.toggle('sel', WS.has(w.id)); wSelUpd(); };
+    const bs = d.querySelectorAll('.row button'); bs[0].onclick = () => send('wacc', '', w.id); bs[1].onclick = () => send('wrej', '', w.id); if (bs[2]) bs[2].onclick = () => gBlock(w.gid, w.from);
+    box.append(d);
+  }
+}
+function wSelUpd() { $('#wSel').hidden = !WS.size; $('#wSelOk').textContent = `✓ Zaznaczone na ekran (${WS.size})`; }
+$('#wSelOk').onclick = () => { if (WS.size) { send('wacc', '', [...WS].join(',')); WS.clear(); wSelUpd(); $('#wList').dataset.sig = ''; } };
+$('#wSelNo').onclick = () => { if (WS.size && confirm(`Odrzucić zaznaczone (${WS.size})?`)) { send('wrej', '', [...WS].join(',')); WS.clear(); wSelUpd(); $('#wList').dataset.sig = ''; } };
+// zablokowane telefony i nowy kod QR
+function renderBlocked(s) {
+  const L = s.gblocked || [], box = $('#gBlk'), sig = L.map(b => b.gid).join('|');
+  $('#gMod').querySelector('summary').textContent = `🛡 Nadużycia: blokowanie gości, nowy kod QR${L.length ? ` · zablokowane: ${L.length}` : ''}`;
+  if (box.dataset.sig === sig) return; box.dataset.sig = sig;
+  box.replaceChildren(...L.map(b => { const r = document.createElement('div'); r.className = 'fr'; r.innerHTML = '<span></span><button type="button">Odblokuj</button>'; r.firstChild.textContent = '🚫 ' + (b.name ? `„${b.name}”` : 'gość bez podpisu'); r.lastChild.onclick = () => send('gunblock', '', b.gid); return r; }));
+}
+$('#gKey').onclick = () => { if (confirm('Zmienić kod QR dla gości? Stary kod przestanie działać — pokaż gościom nowy.')) send('gkey'); };
+// okienko na środku: goście coś przysłali — „Przejrzyj” przewija na górę, do listy
+const GP = { p: 0, w: 0, s: 0 };
+// przewinięcie do listy do akceptacji (życzenia / zdjęcia / prośby) i krótkie podświetlenie
+function gGoTo(kind) {
+  const el = kind === 'w' && !$('#wBox').hidden ? $('#wBox') : kind === 'p' && !$('#gpBox').hidden ? $('#gpBox') : $('#gsec');
+  $('#gsec').hidden = false;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  el.classList.remove('flashbox'); void el.offsetWidth; el.classList.add('flashbox');
+}
+function gPopAdd(kind, n) {
+  GP[kind] += n;
+  const parts = [GP.p && `📷 zdjęcia i filmy: ${GP.p}`, GP.w && `💌 życzenia: ${GP.w}`, GP.s && `🎵 prośby o piosenki: ${GP.s}`].filter(Boolean);
+  $('#gPopT').textContent = '📬 Goście coś przysłali'; $('#gPopS').textContent = parts.join(' · ');
+  $('#gPop').hidden = false;
+}
+const gPopClose = () => { $('#gPop').hidden = true; GP.p = GP.w = GP.s = 0; };
+$('#gPopGo').onclick = () => { const k = GP.w ? 'w' : GP.p ? 'p' : 's'; gPopClose(); gGoTo(k); };
+$('#gPopNo').onclick = gPopClose;
+$('#gPop').onclick = e => { if (e.target.id === 'gPop') gPopClose(); };
+// „ile zostało” — można schować i pokazać z powrotem
+$('#remain').addEventListener('click', e => { if (!e.target.closest('.rmx')) return; try { localStorage.setItem('pilotRemainHide', '1'); } catch { } $('#remain').hidden = true; $('#remainShow').hidden = false; });
+$('#remainShow').onclick = () => { try { localStorage.setItem('pilotRemainHide', '0'); } catch { } $('#remainShow').hidden = true; if (last && last.state && last.state.remain) $('#remain').hidden = false; };
 const seenReq = new Set(); let reqInit = false;
 function renderGReqs(s) {
   const list = s.greqs || [];
@@ -590,19 +689,19 @@ function renderGReqs(s) {
   $('#gHead').textContent = list.length ? `🎵 Prośby gości czekają na decyzję: ${list.length}` : 'Prośby gości';
   $('#bQRHide').hidden = !s.qrOn; $('#bQR').textContent = s.qrOn ? '📱 Kod widać na ekranie' : '📱 Pokaż gościom kod QR (30 s)';
   // nowa prośba: wibracja i dźwięk
-  let fresh = false;
-  for (const r of list) if (!seenReq.has(r.id)) { seenReq.add(r.id); if (reqInit) fresh = true; }
+  let fresh = 0;
+  for (const r of list) if (!seenReq.has(r.id)) { seenReq.add(r.id); if (reqInit) fresh++; }
   reqInit = true;
-  if (fresh) buzz('warn');
-  const box = $('#glist'), sig = list.map(r => r.id + r.title + r.name).join('|') + s.msrc;
+  if (fresh) { buzz('warn'); gPopAdd('s', fresh); }
+  const box = $('#glist'), sig = list.map(r => r.id + r.title + r.name + (r.gid || '')).join('|') + s.msrc;
   if (box.dataset.sig === sig) return; box.dataset.sig = sig; box.replaceChildren();
   list.forEach((r, i) => {
     const d = document.createElement('div'); d.className = 'gi';
-    d.innerHTML = `<div><b></b><br><small></small></div><div class="row">${s.msrc === 'youtube' ? '<button class="play">✓ Akceptuj<small>na koniec kolejki</small></button><button>⏭ Jako następna</button>' : ''}<button>🎬 Na ekran</button><button>✕ Odrzuć</button></div>`;
+    d.innerHTML = `<div><b></b><br><small></small></div><div class="row">${s.msrc === 'youtube' ? '<button class="play">✓ Akceptuj<small>na koniec kolejki</small></button><button>⏭ Jako następna</button>' : ''}<button>🎬 Na ekran</button><button>✕ Odrzuć</button>${r.gid ? '<button title="Zablokuj ten telefon">🚫</button>' : ''}</div>`;
     d.querySelector('b').textContent = r.title; d.querySelector('small').textContent = r.name ? `prośba od: ${r.name}` : 'prośba gościa';
     const bs = d.querySelectorAll('.row button'); let k = 0;
     if (s.msrc === 'youtube') { bs[k++].onclick = () => send('gacc', `&i=${i}&m=end`); bs[k++].onclick = () => send('gacc', `&i=${i}&m=next`); }
-    bs[k++].onclick = () => send('gscreen', `&i=${i}`); bs[k].onclick = () => send('gdel', `&i=${i}`);
+    bs[k++].onclick = () => send('gscreen', `&i=${i}`); bs[k++].onclick = () => send('gdel', `&i=${i}`); if (bs[k]) bs[k].onclick = () => gBlock(r.gid, r.name);
     box.append(d);
   });
   if (!list.length) box.innerHTML = '<p class="tip">Brak nowych próśb.</p>';
@@ -644,17 +743,19 @@ function render(d) {
   renderGReqs(s);   // prośby gości widać zawsze, także gdy pokaz nie trwa
   if (s.theme && document.documentElement.dataset.theme !== s.theme) document.documentElement.dataset.theme = s.theme;
   renderGPhotos(s.gphotos || []);
+  renderWishes(s); renderBlocked(s);
   if (d.offline && !s.on) { nowVideo(null); show('offline'); return; }
   $('#st').textContent = s.tv ? 'połączono · TV' : 'połączono';
   if (!s.on) { nowVideo(null); show('idle'); return; }
   show('ui');
   renderAlerts(s.alerts || []);
-  const rm = $('#remain'), R = s.remain;
-  rm.hidden = !R;
+  const rm = $('#remain'), R = s.remain, hideR = (() => { try { return localStorage.getItem('pilotRemainHide') === '1'; } catch { return false; } })();
+  rm.hidden = !R || hideR; $('#remainShow').hidden = !R || !hideR;
   if (R) {
     const f = x => { x = Math.round(x); if (x < 60) return x + ' s'; const h = Math.floor(x / 3600), m = Math.round(x % 3600 / 60); return h ? `${h} h ${m} min` : `${m} min`; };
     rm.innerHTML = R.atEnd ? '<b>Pokaz dobiegł końca</b>' : `<b>⏱ ${R.loops ? 'Do końca pętli' : 'Do końca'}: ok. ${f(R.nom)}</b><small>koniec ok. ${R.endAt} · zostało: ${plf(R.photos, 'zdjęcie', 'zdjęcia', 'zdjęć')}, ${plf(R.videos, 'film', 'filmy', 'filmów')}</small>${R.pace ? `<small>w Twoim tempie: ok. ${f(R.pace)} (koniec ok. ${R.endAtPace})</small>` : ''}`;
   }
+  if (R && !rm.querySelector('.rmx')) rm.insertAdjacentHTML('beforeend', '<button class="rmx" type="button">✕ Ukryj</button>');
   $('#bPlay').innerHTML = s.playing ? PAUSE : PLAY;
   $('#pos').textContent = `${s.idx} / ${s.n}`;
   $('#lab').textContent = s.kind === 'card' ? '' : s.label;
@@ -726,7 +827,7 @@ function beep(level) {
   if (!sound) return;
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-    const n = level === 'crit' ? 3 : level === 'warn' ? 2 : 1;
+    const n = level === 'crit' || level === 'cue' ? 3 : level === 'warn' ? 2 : 1;
     for (let k = 0; k < n; k++) {
       const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + k * 0.28;
       o.frequency.value = level === 'crit' ? 880 : 660; o.connect(g); g.connect(actx.destination);
@@ -736,17 +837,19 @@ function beep(level) {
   } catch { }
 }
 function buzz(level) {
-  if (navigator.vibrate) navigator.vibrate(level === 'crit' ? [350, 120, 350, 120, 350] : level === 'warn' ? [220, 100, 220] : [90]);
+  if (navigator.vibrate) navigator.vibrate(level === 'cue' ? [450, 150, 450, 150, 450] : level === 'crit' ? [350, 120, 350, 120, 350] : level === 'warn' ? [220, 100, 220] : [90]);
   beep(level);
 }
 function renderAlerts(list) {
   const box = $('#alerts'); box.replaceChildren();
   let fresh = null;
   for (const a of list) {
-    if (!seen.has(a.id)) { seen.add(a.id); if (!fresh || a.level === 'crit' || (a.level === 'warn' && fresh.level === 'info')) fresh = a; }
+    if (!seen.has(a.id)) { seen.add(a.id); if (!fresh || a.level === 'cue' || a.level === 'crit' || (a.level === 'warn' && fresh.level === 'info')) fresh = a; }
     if (dismissed.has(a.id)) continue;
     const d = document.createElement('div'); d.className = 'alert ' + a.level;
-    d.innerHTML = `<span></span><button aria-label="Zamknij">OK</button>`; d.firstChild.textContent = (a.level === 'info' ? 'ℹ ' : '⚠ ') + a.text;
+    const gk = /^💌/.test(a.text) ? 'w' : /^📷/.test(a.text) ? 'p' : /prośba o piosenkę/i.test(a.text) ? 's' : '';
+    d.innerHTML = `<span></span>${gk ? '<button class="go" type="button">👀 Pokaż</button>' : ''}<button aria-label="Zamknij">OK</button>`; d.firstChild.textContent = (a.level === 'cue' ? '' : a.level === 'info' ? 'ℹ ' : '⚠ ') + a.text;
+    if (gk) d.querySelector('.go').onclick = () => { dismissed.add(a.id); d.remove(); gGoTo(gk); };
     d.lastChild.onclick = () => { dismissed.add(a.id); d.remove(); };
     box.append(d);
   }

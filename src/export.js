@@ -240,7 +240,7 @@ function createAlbumer({ native, log = () => { } }) {
           J.done = i + 1;
         }
         // strony albumu: galeria i/lub książka (te same zdjęcia, różny sposób oglądania)
-        const data = JSON.stringify({ title: job.title, sub: job.sub || '', items: list, pages: (job.pages || []).map(p => ({ file: p.file, label: p.label })) });
+        const data = JSON.stringify({ title: job.title, sub: job.sub || '', items: list, pages: (job.pages || []).map(p => ({ file: p.file, label: p.label })), wishes: (job.wishes || []).slice(0, 500).map(w => ({ t: String(w.t || '').slice(0, 1000), n: String(w.n || '').slice(0, 40) })) });
         const pages = job.pages && job.pages.length ? job.pages : [{ file: 'Otwórz album.html', html: job.html }];
         for (const pg of pages) await fsp.writeFile(path.join(root, String(pg.file).replace(/[\\/:*?"<>|]/g, '')), String(pg.html || '').replace('/*__ALBUM__*/[]', data));
         J.files = pages.map(p => p.file);

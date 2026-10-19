@@ -39,6 +39,13 @@ button{font:inherit;cursor:pointer}
 .row2{display:flex;gap:5%;flex:1 1 0;min-height:0}
 .row2 .ph{flex:1 1 0;min-width:0}
 .chap{position:absolute;inset:0;display:grid;place-content:center;text-align:center;padding:10%;gap:14px}
+.wishes{position:absolute;inset:0;display:grid;align-content:center;gap:4%;padding:10% 11%}
+.wishes blockquote{margin:0;text-align:center}
+.wishes blockquote p{margin:0;font:italic 400 clamp(14px,2.3vmin,22px)/1.45 Georgia,serif;color:var(--ink)}
+.wishes blockquote p::before{content:'„'}.wishes blockquote p::after{content:'”'}
+.wishes blockquote.l p{font-size:clamp(12px,1.9vmin,17px);line-height:1.4}
+.wishes cite{display:block;margin-top:.5em;font:normal 12px/1.3 Georgia,serif;letter-spacing:.12em;color:var(--gold);text-transform:uppercase}
+.wishes blockquote+blockquote{padding-top:4%;border-top:1px solid rgba(180,140,76,.25)}
 .chap small{letter-spacing:.3em;text-transform:uppercase;font-size:12px;color:var(--muted)}
 .chap h2{margin:0;font:italic 500 clamp(28px,4.4vmin,58px)/1.1 Georgia,serif;color:var(--ink)}
 .chap .orn{width:120px;height:14px;margin:0 auto;background:linear-gradient(var(--gold),var(--gold)) center/100% 1px no-repeat}
@@ -111,6 +118,15 @@ for (let i = 0; i < items.length; i++) {
   else if (nx && nx.p === it.p && r > 1.2 && rn > 1.2) { pages.push({ type: 'two', a: i, b: i + 1, dir: 'col' }); i++; }
   else pages.push({ type: 'one', a: i });
 }
+// życzenia od gości — osobny rozdział na końcu, kilka na stronę (według długości)
+const wishes = (A.wishes || []).filter(w => w && w.t);
+if (wishes.length) {
+  chapNo++; chapters.push({ title: 'Życzenia od gości', page: pages.length });
+  pages.push({ type: 'chap', title: 'Życzenia od gości', no: chapNo, cnt: -wishes.length });
+  let cur = [], len = 0;
+  for (const w of wishes) { const l = w.t.length + 60; if (cur.length && (len + l > 560 || cur.length >= 4)) { pages.push({ type: 'wish', w: cur }); cur = []; len = 0; } cur.push(w); len += l; }
+  if (cur.length) pages.push({ type: 'wish', w: cur });
+}
 pages.push({ type: 'end' });
 const tilt = i => ((i * 7919) % 5 - 2) * 0.35;   // delikatnie nierówno wklejone zdjęcia — jak w prawdziwym albumie
 function fig(i) {
@@ -122,6 +138,8 @@ function pageHTML(n) {
   const p = pages[n]; if (!p) return { cls: 'empty', html: '' };
   const num = n > 0 && p.type !== 'end' ? `<div class="num">${n}</div>` : '';
   if (p.type === 'cover') return { cls: 'cover', html: `<div class="frame"></div><div class="ct"><h1>${esc(A.title || 'Album')}</h1>${coverIt ? `<div class="cimg"><img data-src="${esc(coverIt.f)}" alt=""></div>` : ''}<p>${esc(A.sub || '')}</p></div>` };
+  if (p.type === 'wish') return { cls: '', html: `<div class="wishes">${p.w.map(w => `<blockquote${w.t.length > 500 ? ' class="l"' : ''}><p>${esc(w.t)}</p>${w.n ? `<cite>— ${esc(w.n)}</cite>` : ''}</blockquote>`).join('')}</div>${num}` };
+  if (p.type === 'chap' && p.cnt < 0) { const n = -p.cnt; return { cls: '', html: `<div class="chap"><small>Rozdział ${p.no}</small><h2>${esc(p.title)}</h2><div class="orn"></div><p>${n} ${n === 1 ? 'wpis' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? 'wpisy' : 'wpisów'} od Waszych gości</p></div>${num}` }; }
   if (p.type === 'chap') return { cls: '', html: `<div class="chap"><small>Rozdział ${p.no}</small><h2>${esc(p.title)}</h2><div class="orn"></div><p>${p.cnt} ${p.cnt === 1 ? 'zdjęcie' : (p.cnt % 10 >= 2 && p.cnt % 10 <= 4 && (p.cnt % 100 < 10 || p.cnt % 100 >= 20)) ? 'zdjęcia' : 'zdjęć'}${p.time ? ' · od ' + esc(p.time) : ''}</p></div>${num}` };
   if (p.type === 'end') return { cls: 'endp', html: `<div class="chap"><small>Koniec</small><h2>${esc(A.title || 'Album')}</h2><div class="orn"></div><p>${items.length} zdjęć i filmów</p><p style="font-size:12px">Album przygotowany w programie Pokazy — otwiera się w każdej przeglądarce, bez internetu.</p></div>` };
   if (p.type === 'one') return { cls: '', html: `<div class="in one">${fig(p.a)}</div>${num}` };

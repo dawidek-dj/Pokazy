@@ -167,6 +167,7 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
       if (p === '/native/tvclients') { const tnow = Date.now(), L = [...(ST.tvc || new Map()).entries()].filter(([, v]) => tnow - v.last < 4500).map(([id, v]) => ({ id, name: v.name, audio: v.audio, ms: v.ms, mid: v.mid, code: v.code })); return json(res, { ok: true, list: L }); }
       if (p === '/native/castmusic' && req.method === 'POST') { const d = JSON.parse((await readBody(req)).toString('utf8') || '{}'); if (d.path) roots.add(path.dirname(d.path)); ST.castMusic = { path: d.path || '', radio: d.radio || '' }; return json(res, { ok: true }); }
       // pliki wszystkich slajdów — miniatury dla pilota w telefonie tworzy wtedy aplikacja (szybko, także w trakcie filmu)
+      if (p === '/native/gblock' && req.method === 'POST') { const d = JSON.parse((await readBody(req)).toString('utf8') || '{}'); ST.gblock = new Set((d.gids || []).map(x => String(x).slice(0, 40))); return json(res, { ok: true, n: ST.gblock.size }); }
       if (p === '/native/rpaths' && req.method === 'POST') {
         const d = JSON.parse((await readBody(req)).toString('utf8') || '{}'), m = new Map();
         for (const x of (d.items || []).slice(0, 20000)) if (x && x.k && Array.isArray(x.p) && x.p.every(y => y && y.path && inRoots(y.path))) m.set(x.k, x.p);
@@ -330,7 +331,10 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
         if (iOk && p === '/api/g/state') return json(res, { ok: true, offline: now - ST.lastSync > 10000, songs: false, upload: true, gallery: false, import: true, title: 'Import zdjęć z telefonu' });
         if (iOk && p !== '/api/g/upload') return json(res, { ok: false }, 403);
         const gf = ST.gflags.split(',');
-        if (p === '/api/g/state') return json(res, { ok: true, offline: now - ST.lastSync > 10000, songs: gf.includes('s'), upload: gf.includes('u') && !!ST.uploadDir, gallery: gf.includes('g') && ST.gallery.length > 0, title: ST.galleryTitle });
+        // telefon zablokowany przez organizatorów (nadużycia) — nic już nie wyśle
+        const gid = String(q.get('gid') || '').replace(/[^\w-]/g, '').slice(0, 40);
+        if (!iOk && gid && ST.gblock && ST.gblock.has(gid) && /^\/api\/g\/(upload|req|wish)$/.test(p)) { req.resume(); return json(res, { ok: false, blocked: true, err: 'Organizatorzy wyłączyli wysyłanie z tego telefonu.' }, 403); }
+        if (p === '/api/g/state') return json(res, { ok: true, offline: now - ST.lastSync > 10000, songs: gf.includes('s'), upload: gf.includes('u') && !!ST.uploadDir, gallery: gf.includes('g') && ST.gallery.length > 0, wishes: gf.includes('w'), title: ST.galleryTitle });
         if (p === '/api/g/upload' && req.method === 'POST') {
           const upDir = iOk ? ST.importDir : ST.uploadDir;
           if (!iOk && (!gf.includes('u') || !ST.uploadDir)) { req.resume(); return json(res, { ok: false, err: 'Wysyłanie zdjęć jest wyłączone.' }, 403); }
@@ -350,7 +354,7 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
           if (tooBig || got === 0) { try { fs.unlinkSync(full); } catch { } return json(res, { ok: false, err: tooBig ? 'Plik jest za duży.' : 'Pusty plik.' }, 400); }
           log10.push(now); ST.ulog.set(ip, log10);
           const st = fs.statSync(full);
-          ST.cmds = [...ST.cmds, { c: iOk ? 'iupload' : 'gupload', t: JSON.stringify({ path: full, name: fname, rel: (iOk ? path.basename(upDir) : 'Od gości') + '/' + fname, size: st.size, mtime: Math.round(st.mtimeMs), from: iOk ? '' : from }) }].slice(-60);
+          ST.cmds = [...ST.cmds, { c: iOk ? 'iupload' : 'gupload', t: JSON.stringify({ path: full, name: fname, rel: (iOk ? path.basename(upDir) : 'Od gości') + '/' + fname, size: st.size, mtime: Math.round(st.mtimeMs), from: iOk ? '' : from, gid }) }].slice(-60);
           return json(res, { ok: true });
         }
         if (p.startsWith('/api/g/g') && !gf.includes('g')) return json(res, { ok: false }, 403);
@@ -362,11 +366,24 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
           if (q.get('v') === 'disp') { const f = await native.cacheFile(it.path, 'disp').catch(() => null); if (f) return sendFile(req, res, f, 'image/jpeg'); }
           return sendFile(req, res, it.path);
         }
+        // życzenia od gości (krótki tekst) — trafiają do organizatorów do akceptacji
+        if (p === '/api/g/wish' && req.method === 'POST') {
+          if (!gf.includes('w')) return json(res, { ok: false, err: 'Wysyłanie życzeń jest wyłączone.' }, 403);
+          const ip = clientIp(req), k = gid || ip; ST.wlast = ST.wlast || new Map(); const last = ST.wlast.get(k) || 0;
+          if (now - last < 20000) return json(res, { ok: false, wait: Math.ceil((20000 - (now - last)) / 1000) });
+          let d = {}; try { d = JSON.parse((await readBody(req)).toString('utf8').slice(0, 12000)); } catch { }
+          const t = String(d.t || '').replace(/\s+/g, ' ').trim().slice(0, 1000), n = String(d.n || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+          if (!t) return json(res, { ok: false, err: 'Wpisz życzenia.' }, 400);
+          ST.wlast.set(k, now);
+          ST.cmds = [...ST.cmds, { c: 'gwish', t: JSON.stringify({ t, n, gid }) }].slice(-60);
+          return json(res, { ok: true });
+        }
         if (p === '/api/g/req' && req.method === 'POST') {
           const ip = clientIp(req), last = ST.glast.get(ip) || 0;
           if (now - last < 15000) return json(res, { ok: false, wait: Math.ceil((15000 - (now - last)) / 1000) });
           ST.glast.set(ip, now);
-          const t = (await readBody(req)).toString('utf8').slice(0, 400);
+          let t = (await readBody(req)).toString('utf8').slice(0, 400);
+          try { const o = JSON.parse(t); o.gid = gid; t = JSON.stringify(o); } catch { }
           ST.cmds = [...ST.cmds, { c: 'greq', t, m: ip.replace(/[^0-9a-f.:]/g, '') }].slice(-30);
           return json(res, { ok: true });
         }

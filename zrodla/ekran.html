@@ -267,7 +267,8 @@ function render(st) {
   wantAudio = st.castAudio !== false;
   annSound(st);
   $('#tap').hidden = (unlocked && !MU.blocked) || !wantAudio;
-  const an = $('#ann'); an.hidden = !st.ann; an.classList.toggle('brk', !!st.annBrk); $('#annT').textContent = st.ann || '';
+  // ogłoszenie albo życzenia od gości (plansza na środku lub pasek)
+  const an = $('#ann'), at = st.ann || st.wish || ''; an.hidden = !at; an.classList.toggle('brk', st.ann ? !!st.annBrk : !!st.wishCard); $('#annT').textContent = at;
   music(st.on ? st.mus : null);
   const c = st.cast;
   if (!st.on || !c) {

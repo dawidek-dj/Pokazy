@@ -13,6 +13,12 @@ function renderParts() {
   const save = () => { S.parts = sortedParts(); saveS(); refresh(); };
   const head = document.createElement('span'); head.className = 'lbl'; head.textContent = 'Części i plansze (np. Ślub, Wesele albo Dzień 1, Dzień 2) — od której do której godziny';
   box.append(head);
+  // plansze części / dni można wyłączyć całkiem (plansza tytułowa ma osobne ustawienie w „Pokaz”)
+  const chw = document.createElement('label'); chw.className = 'chk';
+  chw.innerHTML = '<input type="checkbox"> <span>Plansza z nazwą przed każdą częścią / dniem</span>';
+  const chk = chw.querySelector('input'); chk.checked = S.chapters !== false;
+  chk.onchange = () => { S.chapters = chk.checked; saveS(); refresh(); };
+  box.append(chw);
   const parts = sortedParts(); S.parts = parts;
   const dayOpts = (sel, val, extra) => {
     for (let d = 0; d < Math.max(win.days, (val || 0) + 1); d++) {
@@ -44,16 +50,18 @@ function renderParts() {
     onT(tFrom, 'time'); onT(tTo, 'endTime');
     dFrom.onchange = () => { p.day = +dFrom.value; save(); };
     dTo.onchange = () => { p.endDay = +dTo.value; save(); };
-    del.onclick = () => { if (S.parts.length <= 1) return; S.parts.splice(S.parts.indexOf(p), 1); save(); };
-    del.hidden = parts.length <= 1;
+    del.onclick = () => { S.parts.splice(S.parts.indexOf(p), 1); save(); };
     box.append(row);
   });
   const add = document.createElement('button'); add.className = 'linkbtn'; add.style.justifySelf = 'start';
   add.textContent = '+ Dodaj część / planszę (np. Oczepiny)';
-  add.onclick = () => { const last = parts[parts.length - 1]; S.parts.push({ label: 'Nowa część', day: last.day || 0, time: last.time && last.time < '23:00' ? String(+last.time.slice(0, 2) + 1).padStart(2, '0') + last.time.slice(2) : '22:00' }); save(); };
+  add.onclick = () => { const last = parts[parts.length - 1] || { day: 0, time: '' }; S.parts.push({ label: 'Nowa część', day: last.day || 0, time: last.time && last.time < '23:00' ? String(+last.time.slice(0, 2) + 1).padStart(2, '0') + last.time.slice(2) : '22:00' }); save(); };
   const hint = document.createElement('p'); hint.className = 'hint';
-  hint.textContent = 'Przed każdą częścią w pokazie pojawia się plansza z jej nazwą. Puste „do” = do początku następnej części. Godziny po północy (np. do 04:00) liczą się do tej samej nocy. Zdjęcia spoza wszystkich części pokazują się bez nazwy i bez planszy.';
-  box.append(add, hint);
+  hint.textContent = (parts.length ? '' : 'Bez części — plansze według dni (Dzień 1, Dzień 2…). ') + 'Przed każdą częścią w pokazie pojawia się plansza z jej nazwą. Puste „do” = do początku następnej części. Godziny po północy (np. do 04:00) liczą się do tej samej nocy. Zdjęcia spoza wszystkich części pokazują się bez nazwy i bez planszy.';
+  const clr = document.createElement('button'); clr.className = 'linkbtn'; clr.style.justifySelf = 'start'; clr.textContent = '✕ Usuń wszystkie części';
+  clr.hidden = !parts.length;
+  clr.onclick = () => { if (!confirm('Usunąć wszystkie części? Plansze będą wtedy według dni (Dzień 1, Dzień 2…) — albo odznacz „Plansza z nazwą…”, żeby nie było żadnych.')) return; S.parts = []; saveS(); refresh(); };
+  box.append(add, clr, hint);
 }
 function renderSidebar() {
   const sl = $('#srcList'); sl.innerHTML = '';

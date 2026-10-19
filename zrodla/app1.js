@@ -579,7 +579,7 @@ function buildSlides() {
   for (let i = 0; i < showList.length; i++) {
     const it = showList[i]; if (used.has(it.key)) continue;
     const d = dayIndexOf(it.t);
-    if (S.showTitle && d !== cur && d >= 0 && d < dayList.length && !dayList[d].filler) slides.push({ type: 'chapter', day: d, t: it.t });
+    if (S.showTitle && S.chapters !== false && d !== cur && d >= 0 && d < dayList.length && !dayList[d].filler) slides.push({ type: 'chapter', day: d, t: it.t });
     cur = d;
     // para ułożona ręcznie — zawsze razem, w miejscu wcześniejszego zdjęcia
     const pw = o(it).pairWith && inList.get(o(it).pairWith);

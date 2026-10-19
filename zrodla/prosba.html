@@ -31,6 +31,8 @@ button:disabled{opacity:.5}
 .msg.bad{border-color:var(--rose);color:#F6D3D6}
 .msg:empty{display:none}
 label{font-size:14px;color:var(--muted)}
+textarea{font:inherit;color:inherit;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:12px 14px;width:100%;resize:vertical;min-height:120px}
+.cnt{display:block;text-align:right;color:var(--muted);font-size:12px;margin-top:4px}
 [hidden]{display:none!important}
 
 .tabs{display:flex;gap:6px;position:sticky;top:0;z-index:5;background:var(--bg);padding:6px 0}
@@ -62,7 +64,7 @@ label{font-size:14px;color:var(--muted)}
 <h1 id="h1">Dołącz do pokazu 📱</h1>
 <p class="sub" id="sub"></p>
 <p class="msg bad" id="noKey" hidden>Brakuje kodu. Zeskanuj kod QR na sali jeszcze raz.</p>
-<nav class="tabs" id="tabs" hidden><button data-t="songs">🎵 Piosenka</button><button data-t="upload">📷 Wyślij</button><button data-t="gallery">🖼 Galeria</button></nav>
+<nav class="tabs" id="tabs" hidden><button data-t="songs">🎵 Piosenka</button><button data-t="upload">📷 Zdjęcia i filmy</button><button data-t="wishes">💌 Życzenia</button><button data-t="gallery">🖼 Galeria</button></nav>
 
 <section id="tSongs" hidden style="display:grid;gap:12px">
   <div><label for="nm">Twoje imię (opcjonalnie)</label><input id="nm" maxlength="40" placeholder="np. Kasia" autocomplete="given-name"></div>
@@ -73,10 +75,18 @@ label{font-size:14px;color:var(--muted)}
 
 <section id="tUpload" hidden style="display:grid;gap:12px">
   <div><label for="from">Podpis pod Twoimi zdjęciami (np. od Kasi)</label><input id="from" maxlength="40" placeholder="np. od Kasi i Tomka"></div>
-  <label class="drop" for="files"><b>📷 Wybierz zdjęcia i filmy</b><span>z galerii telefonu — możesz zaznaczyć wiele naraz</span></label>
+  <label class="drop" for="files"><b>📷 Wyślij zdjęcia i filmy</b><span>wybierz z galerii telefonu — możesz zaznaczyć wiele naraz</span></label>
   <input type="file" id="files" accept="image/*,video/*" multiple hidden>
   <p class="msg" id="umsg"></p>
   <div class="ups" id="ups"></div>
+</section>
+
+<section id="tWishes" hidden style="display:grid;gap:12px">
+  <p class="sub" style="text-align:left">Napisz kilka słów — po akceptacji organizatorów pojawią się na ekranie, a potem trafią do pamiątkowego albumu.</p>
+  <div><label for="wtext">Twoje życzenia</label><textarea id="wtext" maxlength="1000" rows="6" placeholder="np. Kochani, wszystkiego najlepszego na nowej drodze życia!"></textarea><small class="cnt" id="wcnt">0 / 1000</small></div>
+  <div><label for="wname">Podpis (np. Kasia i Tomek)</label><input id="wname" maxlength="40" placeholder="np. Ciocia Ania" autocomplete="name"></div>
+  <button class="go" id="wgo">💌 Wyślij życzenia</button>
+  <p class="msg" id="wmsg"></p>
 </section>
 
 <section id="tGallery" hidden style="display:grid;gap:8px">
@@ -96,6 +106,8 @@ const hp = new URLSearchParams(location.hash.slice(1)), IMPORT = hp.has('i'), KP
 let key = hp.get(KP);
 try { if (!IMPORT) { if (key) localStorage.setItem('guestKey', key); else key = localStorage.getItem('guestKey'); } } catch { }
 const LSx = (k, v) => { try { if (v === undefined) return localStorage.getItem(k) || ''; localStorage.setItem(k, v); } catch { return ''; } };
+// identyfikator tego telefonu (bez danych osobowych) — organizatorzy mogą zablokować nadużycia z jednego telefonu
+let GID = LSx('guestId'); if (!GID) { GID = Array.from(crypto.getRandomValues(new Uint8Array(9)), b => (b % 36).toString(36)).join(''); LSx('guestId', GID); }
 $('#nm').value = LSx('guestName'); $('#nm').addEventListener('change', () => LSx('guestName', $('#nm').value.trim()));
 $('#from').value = LSx('guestFrom'); $('#from').addEventListener('change', () => LSx('guestFrom', $('#from').value.trim()));
 function fetchT(url, opt = {}, ms = 12000) { const c = new AbortController(), t = setTimeout(() => c.abort(), ms); return fetch(url, { ...opt, signal: c.signal, cache: 'no-store' }).finally(() => clearTimeout(t)); }
@@ -127,10 +139,10 @@ function parseYTResults(html, max) {
 }
 
 /* ---- zakładki ---- */
-const F = { songs: false, upload: false, gallery: false };
+const F = { songs: false, upload: false, wishes: false, gallery: false };
 function tab(t) {
   for (const b of document.querySelectorAll('.tabs button')) b.classList.toggle('on', b.dataset.t === t);
-  $('#tSongs').hidden = t !== 'songs'; $('#tUpload').hidden = t !== 'upload'; $('#tGallery').hidden = t !== 'gallery';
+  $('#tSongs').hidden = t !== 'songs'; $('#tUpload').hidden = t !== 'upload'; $('#tWishes').hidden = t !== 'wishes'; $('#tGallery').hidden = t !== 'gallery';
   if (t === 'gallery') loadGallery();
   LSx('guestTab', t);
 }
@@ -140,11 +152,11 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => tab(b.d
 async function ask(id, title, btn) {
   if (btn) btn.disabled = true;
   try {
-    const r = await fetchT(`/api/g/req?${KP}=${encodeURIComponent(key)}`, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ v: id, t: title || '', n: $('#nm').value.trim() }) });
+    const r = await fetchT(`/api/g/req?${KP}=${encodeURIComponent(key)}&gid=${GID}`, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ v: id, t: title || '', n: $('#nm').value.trim() }) });
     const d = await r.json();
     if (d.ok) { msg(`Dziękujemy! Prośba „${title || 'o piosenkę'}” trafiła do organizatorów. 🎶`, 'ok'); if (btn) btn.textContent = '✓ Wysłano'; }
     else if (d.wait) { msg(`Chwileczkę — kolejną prośbę możesz wysłać za ${d.wait} s.`, 'bad'); if (btn) btn.disabled = false; }
-    else { msg('Prośby są teraz wyłączone.', 'bad'); if (btn) btn.disabled = false; }
+    else { msg(d.err || 'Prośby są teraz wyłączone.', 'bad'); if (btn) btn.disabled = false; }
   } catch { msg('Nie udało się wysłać — sprawdź, czy jesteś w sieci Wi-Fi sali.', 'bad'); if (btn) btn.disabled = false; }
 }
 async function go() {
@@ -175,7 +187,7 @@ $('#q').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDef
 function upload(file, row) {
   return new Promise(res => {
     const x = new XMLHttpRequest();
-    x.open('POST', `/api/g/upload?${KP}=${encodeURIComponent(key)}&name=${encodeURIComponent(file.name)}&from=${encodeURIComponent($('#from').value.trim())}`);
+    x.open('POST', `/api/g/upload?${KP}=${encodeURIComponent(key)}&gid=${GID}&name=${encodeURIComponent(file.name)}&from=${encodeURIComponent($('#from').value.trim())}`);
     x.upload.onprogress = e => { if (e.lengthComputable) row.querySelector('i').style.width = (e.loaded / e.total * 100) + '%'; };
     x.onload = () => { let d = {}; try { d = JSON.parse(x.responseText); } catch { } res(d.ok ? { ok: true } : { ok: false, err: d.err || 'Nie udało się wysłać.' }); };
     x.onerror = () => res({ ok: false, err: 'Brak połączenia — sprawdź Wi-Fi sali.' });
@@ -196,6 +208,22 @@ $('#files').onchange = async e => {
     if (r.ok) { ok++; row.querySelector('i').style.width = '100%'; }
   }
   msg(ok ? `Dziękujemy! Wysłano: ${ok} z ${files.length}. 💛` : 'Nie udało się wysłać — spróbuj ponownie.', ok ? 'ok' : 'bad', '#umsg');
+};
+
+/* ---- życzenia ---- */
+$('#wname').value = LSx('guestName') || LSx('guestFrom'); $('#wname').addEventListener('change', () => LSx('guestName', $('#wname').value.trim()));
+$('#wtext').addEventListener('input', () => { $('#wcnt').textContent = `${$('#wtext').value.length} / 1000`; });
+$('#wgo').onclick = async () => {
+  const t = $('#wtext').value.trim(); if (!t) { $('#wtext').focus(); return; }
+  const b = $('#wgo'); b.disabled = true;
+  try {
+    const r = await fetchT(`/api/g/wish?${KP}=${encodeURIComponent(key)}&gid=${GID}`, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ t, n: $('#wname').value.trim() }) });
+    const d = await r.json();
+    if (d.ok) { msg('Dziękujemy! 💛 Życzenia trafiły do organizatorów — po akceptacji pojawią się na ekranie.', 'ok', '#wmsg'); $('#wtext').value = ''; $('#wcnt').textContent = '0 / 1000'; }
+    else if (d.wait) msg(`Chwileczkę — kolejne życzenia możesz wysłać za ${d.wait} s.`, 'bad', '#wmsg');
+    else msg(d.err || 'Życzenia są teraz wyłączone.', 'bad', '#wmsg');
+  } catch { msg('Nie udało się wysłać — sprawdź, czy jesteś w sieci Wi-Fi sali.', 'bad', '#wmsg'); }
+  b.disabled = false;
 };
 
 /* ---- galeria ---- */
@@ -239,14 +267,17 @@ $('#vMedia').addEventListener('touchend', e => { if (tx == null) return; const d
   try { const r = await fetchT(`/api/g/state?${KP}=${encodeURIComponent(key)}`, {}, 6000); st = r.status === 403 ? { off: true } : await r.json(); } catch { st = { err: true }; }
   if (st.off) { $('#sub').textContent = 'Ten kod jest nieaktywny — organizatorzy wyłączyli funkcje dla gości.'; return; }
   if (st.err) { $('#sub').textContent = 'Brak połączenia — sprawdź, czy jesteś w sieci Wi-Fi sali.'; }
-  F.songs = st.songs !== false; F.upload = !!st.upload; F.gallery = !!st.gallery;
+  F.songs = st.songs !== false; F.upload = !!st.upload; F.wishes = !!st.wishes; F.gallery = !!st.gallery;
   const on = Object.keys(F).filter(k => F[k]);
   document.querySelectorAll('.tabs button').forEach(b => { b.hidden = !F[b.dataset.t]; });
   $('#tabs').hidden = on.length < 2;
-  if (st.import) { $('#h1').textContent = 'Import zdjęć z telefonu 📥'; $('#sub').textContent = 'Wybierz zdjęcia i filmy — trafią prosto do projektu na laptopie.'; $('#from').parentElement.hidden = true; F.songs = F.gallery = false; tab('upload'); return; }
+  if (st.import) { $('#h1').textContent = 'Import zdjęć z telefonu 📥'; $('#sub').textContent = 'Wybierz zdjęcia i filmy — trafią prosto do projektu na laptopie.'; $('#from').parentElement.hidden = true; F.songs = F.gallery = F.wishes = false; tab('upload'); return; }
   const title = st.title ? `${st.title} 📱` : 'Dołącz do pokazu 📱';
-  $('#h1').textContent = on.length === 1 && on[0] === 'songs' ? 'Zaproponuj piosenkę 🎵' : on.length === 1 && on[0] === 'upload' ? 'Wyślij zdjęcia 📷' : on.length === 1 ? 'Galeria zdjęć 🖼' : title;
-  $('#sub').textContent = on.length > 1 ? 'Zaproponuj piosenkę, wyślij swoje zdjęcia albo obejrzyj i pobierz zdjęcia z wydarzenia.' : on[0] === 'songs' ? 'Wyszukaj utwór z YouTube i wyślij prośbę — organizatorzy zdecydują, kiedy zagra.' : on[0] === 'upload' ? 'Wyślij zdjęcia i filmy z telefonu — trafią do pokazu.' : 'Dotknij zdjęcia, aby je obejrzeć i pobrać.';
+  const one = { songs: 'Zaproponuj piosenkę 🎵', upload: 'Wyślij zdjęcia i filmy 📷', wishes: 'Złóż życzenia 💌', gallery: 'Galeria zdjęć 🖼' };
+  const what = { songs: 'zaproponuj piosenkę', upload: 'wyślij swoje zdjęcia i filmy', wishes: 'złóż życzenia', gallery: 'obejrzyj i pobierz zdjęcia z wydarzenia' };
+  $('#h1').textContent = on.length === 1 ? one[on[0]] : title;
+  const ws = on.map(k => what[k]); const list = ws.length > 1 ? ws.slice(0, -1).join(', ') + ' albo ' + ws[ws.length - 1] : ws[0] || '';
+  $('#sub').textContent = on.length > 1 ? list.charAt(0).toUpperCase() + list.slice(1) + '.' : on[0] === 'songs' ? 'Wyszukaj utwór z YouTube i wyślij prośbę — organizatorzy zdecydują, kiedy zagra.' : on[0] === 'upload' ? 'Wyślij zdjęcia i filmy z telefonu — trafią do pokazu.' : on[0] === 'wishes' ? 'Napisz kilka słów — pojawią się na ekranie i w pamiątkowym albumie.' : 'Dotknij zdjęcia, aby je obejrzeć i pobrać.';
   const want = LSx('guestTab'); tab(F[want] ? want : on[0] || 'songs');
 })();
 </script>

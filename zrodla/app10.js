@@ -237,7 +237,7 @@ function openGuestQR() {
 }
 function showGuestQR(sec) {
   if (!Show.on) { toast('Kod na ekranie pokażesz w trakcie pokazu.'); return; }
-  if (!S.guestOn) { S.guestOn = true; saveS(); $('#sGuestOn').checked = true; }
+  if (!S.guestOn && !guestAny()) { S.guestOn = true; saveS(); $('#sGuestOn').checked = true; }
   const box = $('#qrBoard'), url = guestUrl();
   try { const q = qrcode(0, 'M'); q.addData(url); q.make(); box.querySelector('.qrb-code').innerHTML = q.createSvgTag(8, 2); } catch { }
   box.querySelector('.qrb-url').textContent = url.replace(/#.*/, '');

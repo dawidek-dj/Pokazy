@@ -183,7 +183,7 @@ openAlbum = function () {
     const pages = [];
     if (kind !== 'grid') { let bk = ''; try { bk = await (await fetch('lib/ksiazka.html')).text(); } catch { } if (!bk) { toast('Nie udało się wczytać szablonu książki.'); return; } pages.push({ file: 'Otwórz książkę.html', label: 'Książka', html: bk }); }
     if (kind !== 'book') pages.push({ file: 'Otwórz album.html', label: 'Galeria', html: ALBUM_HTML });
-    const r = await (await fetch(`/native/album?t=${NATIVE.token}`, { method: 'POST', body: JSON.stringify({ dest, title: S.names.trim() || projName(), sub, items: its, pages }) })).json();
+    const r = await (await fetch(`/native/album?t=${NATIVE.token}`, { method: 'POST', body: JSON.stringify({ dest, title: S.names.trim() || projName(), sub, items: its, pages, wishes: (typeof WISH !== 'undefined' ? WISH.list : []).map(w => ({ t: w.text, n: w.from })) }) })).json();
     const pr = b.querySelector('#alProg'); pr.hidden = false;
     if (!r.ok) { pr.querySelector('span').textContent = r.err || 'Nie udało się.'; return; }
     b.querySelector('#alGo').disabled = true;
