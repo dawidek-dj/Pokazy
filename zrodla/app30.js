@@ -60,7 +60,7 @@ function btrName(sig) {
   const N = { 'k:mediatracknext': '⏭', 'k:mediatrackprevious': '⏮', 'k:mediaplaypause': '⏯', 'k:mediaplay': '▶', 'k:mediapause': '⏸', 'k:mediastop': '⏹',
     'k:audiovolumeup': 'Głośniej (+)', 'k:audiovolumedown': 'Ciszej (−)', 'k:audiovolumemute': 'Wycisz', 'k:pagedown': 'Page Down', 'k:pageup': 'Page Up',
     'k:arrowright': '→', 'k:arrowleft': '←', 'k:arrowup': '↑', 'k:arrowdown': '↓', 'k:enter': 'Enter', 'k: ': 'Spacja', 'k:escape': 'Esc', 'k:tab': 'Tab',
-    'k:backspace': 'Backspace', 'k:browserback': 'Wstecz (przeglądarka)', 'k:browserforward': 'Dalej (przeglądarka)', 'k:camera': 'Aparat', 'k:home': 'Home', 'k:end': 'End' };
+    'k:backspace': 'Backspace', 'k:browserback': 'Wstecz', 'k:browserforward': 'Dalej (przeglądarka)', 'k:browserhome': 'Home', 'k:browsersearch': 'Szukaj', 'k:contextmenu': 'Menu', 'k:camera': 'Aparat', 'k:home': 'Home', 'k:end': 'End' };
   const m = sig.match(/^((?:[cas]\+)*)(.*)$/), pre = m[1].replace('c+', 'Ctrl+').replace('a+', 'Alt+').replace('s+', 'Shift+'), k = m[2];
   const base = N[k] || (k.startsWith('k:') ? (k.length === 3 ? k.slice(2).toUpperCase() : k.slice(2).replace(/^./, c => c.toUpperCase())) : k.startsWith('c:') ? k.slice(2) : 'kod ' + k.slice(2));
   return pre + base;

@@ -264,6 +264,8 @@ function remoteKeysSet(list, wc) {
 }
 ipcMain.handle('native:remoteKeys', (e, list) => remoteKeysSet(list, e.sender));
 app.on('will-quit', () => { try { require('electron').globalShortcut.unregisterAll(); } catch { } });
+let hidPick = null;
+ipcMain.on('native:hidChosen', (e, id) => { const cb = hidPick; hidPick = null; if (cb) { try { cb(id || undefined); } catch { } } });
 ipcMain.on('native:showItem', (e, p) => { try { require('electron').shell.showItemInFolder(p); } catch { } });
 
 app.on('second-instance', (e, argv) => {
@@ -287,6 +289,24 @@ app.whenReady().then(async () => {
       cb(true);
     });
   } catch (e) { log('uprawnienia', e.message); }
+  // pilot Bluetooth: przyciski, które Windows zgłasza jako „polecenia” (Wstecz, Home, multimedia) — do programu
+  app.on('browser-window-created', (e, w) => {
+    w.on('app-command', (ev, cmd) => { try { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('native:appCommand', String(cmd || '')); } catch { } });
+  });
+  // pilot Bluetooth odczytywany bezpośrednio (HID) — gdy Windows nie zamienia jego przycisków na klawisze
+  // (np. strzałki i OK pilotów do Android TV). Program pyta, które urządzenie wybrać.
+  try {
+    const ses = require('electron').session.defaultSession, ours = s => new RegExp(`^http://(localhost|127\\.0\\.0\\.1):${port}(/|$)`).test(s || '');
+    ses.on('select-hid-device', (event, details, callback) => {
+      event.preventDefault();
+      const list = (details.deviceList || []).map(d => ({ id: d.deviceId, name: d.name || 'Urządzenie', vid: d.vendorId, pid: d.productId }));
+      if (hidPick) { try { hidPick(); } catch { } }
+      hidPick = callback;
+      try { mainWin.webContents.send('native:hidChoose', list); } catch { hidPick = null; callback(); }
+      setTimeout(() => { if (hidPick === callback) { hidPick = null; try { callback(); } catch { } } }, 120000);
+    });
+    ses.setDevicePermissionHandler(d => d.deviceType === 'hid' && ours(d.origin));
+  } catch (e) { log('hid', e.message); }
   Menu.setApplicationMenu(null);
   try { await startServer(); }
   catch (e) { log(e); dialog.showErrorBox('Pokazy', String(e.message || e)); app.quit(); return; }

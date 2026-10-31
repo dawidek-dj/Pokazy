@@ -30,6 +30,9 @@ contextBridge.exposeInMainWorld('native', {
   platform: process.platform,
   displays: () => ipcRenderer.invoke('native:displays'),
   remoteKeys: list => ipcRenderer.invoke('native:remoteKeys', list),
+  onAppCommand: cb => ipcRenderer.on('native:appCommand', (e, c) => cb(c)),
+  onHidChoose: cb => ipcRenderer.on('native:hidChoose', (e, l) => cb(l)),
+  hidChosen: id => ipcRenderer.send('native:hidChosen', id || ''),
   onRemoteKey: cb => ipcRenderer.on('native:remoteKey', (e, k) => cb(k)),
   frameSink: (label, where) => ipcRenderer.invoke('native:frameSink', label, where || 'tv'),
 });

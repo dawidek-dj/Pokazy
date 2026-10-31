@@ -43,7 +43,8 @@ main{overflow:auto;position:relative}
 .btn:hover{border-color:var(--gold);background:#3E3043}
 .btn.primary{background:var(--gold);border-color:var(--gold);color:#2A1D22;font-weight:600}
 .btn.primary:hover{background:var(--gold2)}
-.btrlist{display:grid;gap:8px}.btrgrp>.btrrow{margin-top:6px}.btrgrp>summary{cursor:pointer;color:var(--gold);font-size:13px;padding:4px 2px;list-style-position:inside}.btrgrp[open]>summary{margin-bottom:2px}
+.btrlist{display:grid;gap:8px}.btrlog{display:grid;gap:2px;font:12px/1.4 ui-monospace,Consolas,monospace;color:var(--muted)}.btrlog:empty{display:none}.btrlog div:first-child{color:var(--gold2)}
+.btrhid{display:grid;gap:6px;padding:10px 12px;border-radius:12px;border:1px dashed var(--line)}.btrgrp>.btrrow{margin-top:6px}.btrgrp>summary{cursor:pointer;color:var(--gold);font-size:13px;padding:4px 2px;list-style-position:inside}.btrgrp[open]>summary{margin-bottom:2px}
 .btrrow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 8px;padding:8px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--line)}
 .btrrow .bl{display:grid;min-width:0}.btrrow .bl b{font-weight:500}.btrrow .bl small{color:var(--muted);font-size:12px}
 .btrrow .keys{grid-column:1/-1;display:flex;gap:4px;flex-wrap:wrap}.btrrow .keys:empty{display:none}
@@ -1058,8 +1059,15 @@ body.showing #yt-holder{z-index:99}
       <summary>Pilot Bluetooth</summary>
       <div class="sec-body">
         <p class="hint">Pilot połączony z laptopem przez Bluetooth (prezenter, pilot multimedialny, pilot do zdjęć). Najpierw sparuj go w Windows (Ustawienia → Bluetooth i urządzenia → Dodaj urządzenie). Przyciski ⏭ ⏮ ⏯, strzałki, Page Up/Down, spacja i Enter działają od razu. Każdy przycisk pilota możesz przypisać do dowolnego działania z listy (te same co w legendzie skrótów — klawisz L): kliknij „Naucz” i naciśnij przycisk na pilocie. Możesz nauczyć kilka pilotów.</p>
-        <div class="btrlist" id="btrList"></div>
         <p class="hint" id="btrInfo">Naciśnij dowolny przycisk na pilocie — tutaj zobaczysz, co robi.</p>
+        <div class="btrlog" id="btrLog"></div>
+        <div class="btrhid app-only-f" id="btrHidWrap">
+          <b>Przyciski pilota nic nie robią?</b>
+          <span class="hint">Piloty do przystawek z Android TV (np. Nokia, Thomson) wysyłają strzałki i OK tak, że Windows ich nie przekazuje dalej. Połącz pilota z programem bezpośrednio — raz, potem łączy się sam.</span>
+          <button class="btn small" id="btrHid" type="button" style="justify-self:start">🔌 Połącz pilota bezpośrednio</button>
+          <small class="hint" id="btrHidInfo"></small>
+        </div>
+        <div class="btrlist" id="btrList"></div>
         <button class="btn small ghost" id="btrReset" type="button" style="justify-self:start" hidden>Przywróć przyciski domyślne</button>
       </div>
     </details>
