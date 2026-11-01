@@ -15,8 +15,8 @@ function renderParts() {
   box.append(head);
   // plansze części / dni można wyłączyć całkiem (plansza tytułowa ma osobne ustawienie w „Pokaz”)
   const chw = document.createElement('label'); chw.className = 'chk';
-  chw.innerHTML = '<input type="checkbox"> <span>Plansza z nazwą przed każdą częścią / dniem</span>';
-  const chk = chw.querySelector('input'); chk.checked = S.chapters !== false;
+  chw.innerHTML = '<input type="checkbox"> <span>Plansza z nazwą przed każdą częścią / dniem (domyślnie wyłączone — jest tylko plansza tytułowa)</span>';
+  const chk = chw.querySelector('input'); chk.checked = S.chapters === true;
   chk.onchange = () => { S.chapters = chk.checked; saveS(); refresh(); };
   box.append(chw);
   const parts = sortedParts(); S.parts = parts;

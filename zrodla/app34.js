@@ -33,7 +33,7 @@ applyDayPlaces = function () {
   box.hidden = !rows.length; box.replaceChildren();
   if (!rows.length) return;
   const h = document.createElement('span'); h.className = 'lbl';
-  h.textContent = 'Plansze dni — tworzą się same, przed pierwszym zdjęciem z każdego dnia (dni program rozpoznaje z dat zdjęć). ✎ zmienia nazwę, ✕ — ten dzień bez planszy.';
+  h.textContent = S.chapters === true ? 'Plansze dni — tworzą się same, przed pierwszym zdjęciem z każdego dnia (dni program rozpoznaje z dat zdjęć). ✎ zmienia nazwę, ✕ — ten dzień bez planszy.' : 'Dni rozpoznane z dat zdjęć. Plansze dni są wyłączone (jest tylko plansza tytułowa) — włączysz je polem „Plansza z nazwą przed każdą częścią / dniem” powyżej. ✎ zmienia nazwę dnia.';
   const ck = document.createElement('label'); ck.className = 'chk';
   ck.innerHTML = '<input type="checkbox"> <span>Dodawaj nazwę miejscowości z GPS zdjęć (np. „Dzień 1 — Florencja”)</span>';
   const ci = ck.querySelector('input'); ci.checked = places; ci.onchange = () => { S.dayPlaceNames = ci.checked; saveS(); refresh(); };
@@ -58,20 +58,3 @@ applyDayPlaces = function () {
   }
 };
 
-// start
-Hist.last = JSON.stringify(O);
-bindSettings();
-bindExtraSettings();
-renderSidebar();
-renderTimeline();
-renderHeader();
-renderReopen();
-updUndoUI();
-updMVUI();
-updGReqUI();
-updProjUI();
-updGPUI();
-for (const P of Picker.inst) Picker.render(P);
-if (location.protocol === 'file:') $('#fileWarn').hidden = false;
-Remote.init();
-if (!NATIVE) offerRecovery();
