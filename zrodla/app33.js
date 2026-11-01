@@ -115,20 +115,3 @@ if (NATIVE && NATIVE.onHidChoose) NATIVE.onHidChoose(list => {
   if (!navigator.hid || !NATIVE) { const w = $('#btrHidWrap'); if (w) w.hidden = true; }
 })();
 
-// start
-Hist.last = JSON.stringify(O);
-bindSettings();
-bindExtraSettings();
-renderSidebar();
-renderTimeline();
-renderHeader();
-renderReopen();
-updUndoUI();
-updMVUI();
-updGReqUI();
-updProjUI();
-updGPUI();
-for (const P of Picker.inst) Picker.render(P);
-if (location.protocol === 'file:') $('#fileWarn').hidden = false;
-Remote.init();
-if (!NATIVE) offerRecovery();

@@ -33,7 +33,7 @@ const HKEY = k => PROJ === 'default' ? k : `${k}:${PROJ}`;   // klucze zapamięt
 const fileURL = f => f && f.native ? f.url : URL.createObjectURL(f);
 const DEFAULTS = {
   names: '', showTitle: true, startDay: '', days: 2,
-  dayLabels: ['Wesele', 'Poprawiny', 'Dzień trzeci', 'Dzień czwarty'], dayBoundary: 6,
+  dayLabels: Array.from({ length: 31 }, (_, i) => `Dzień ${i + 1}`), dayBoundary: 6,
   // części wesela: nazwa, dzień (0 = pierwszy) i godzina rozpoczęcia; każda trwa do początku następnej
   parts: [{ label: 'Ślub', day: 0, time: '' }, { label: 'Wesele', day: 0, time: '17:20' }, { label: 'Poprawiny', day: 1, time: '12:00' }],
   photoSec: 6, kenBurns: true, pairPortraits: false, captions: true, v: 2,
@@ -579,7 +579,7 @@ function buildSlides() {
   for (let i = 0; i < showList.length; i++) {
     const it = showList[i]; if (used.has(it.key)) continue;
     const d = dayIndexOf(it.t);
-    if (S.showTitle && S.chapters !== false && d !== cur && d >= 0 && d < dayList.length && !dayList[d].filler) slides.push({ type: 'chapter', day: d, t: it.t });
+    if (S.showTitle && S.chapters !== false && d !== cur && d >= 0 && d < dayList.length && !dayList[d].filler && !dayList[d].noCard) slides.push({ type: 'chapter', day: d, t: it.t });
     cur = d;
     // para ułożona ręcznie — zawsze razem, w miejscu wcześniejszego zdjęcia
     const pw = o(it).pairWith && inList.get(o(it).pairWith);
