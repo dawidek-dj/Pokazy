@@ -19,20 +19,3 @@ captionFor = it => cornerCaption(it);
   c.checked = !!S.capDay; c.onchange = () => { S.capDay = c.checked; saveS(); if (Show.on) setCaption(slides[Show.idx]); };
 })();
 
-// start
-Hist.last = JSON.stringify(O);
-bindSettings();
-bindExtraSettings();
-renderSidebar();
-renderTimeline();
-renderHeader();
-renderReopen();
-updUndoUI();
-updMVUI();
-updGReqUI();
-updProjUI();
-updGPUI();
-for (const P of Picker.inst) Picker.render(P);
-if (location.protocol === 'file:') $('#fileWarn').hidden = false;
-Remote.init();
-if (!NATIVE) offerRecovery();

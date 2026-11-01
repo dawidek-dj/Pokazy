@@ -247,6 +247,10 @@ svg{width:26px;height:26px}
     <div class="row"><select id="annDur"><option value="15">15 s</option><option value="30" selected>30 s</option><option value="60">1 min</option><option value="180">3 min</option><option value="0">do odwołania</option></select><button id="annSend" class="play" style="min-height:48px">Pokaż na TV</button></div>
   </div>
 
+  <details class="gmod sec" id="qsSec"><summary>⚙ Wyświetlanie: plansze i podpisy (zmiana od razu na ekranie)</summary>
+    <div id="qsL" style="display:grid;gap:10px"></div>
+  </details>
+
   <div class="foot"><button id="bAwake">☀ Nie wygaszaj ekranu telefonu</button><button id="bSound">🔔 Dźwięk alertów: wł.</button></div>
 
   <div class="sec" id="msec">
@@ -737,6 +741,19 @@ $('#annSend').onclick = async () => {
   $('#annBrk').checked = false;
 };
 
+const QS_L = [['showTitle', 'Plansza tytułowa na początku'], ['chapters', 'Plansze przed częściami / dniami'], ['captions', 'Godzina w rogu zdjęcia'], ['capDay', 'Nazwa dnia / części w rogu zdjęcia'], ['showPlace', 'Miejscowość w rogu zdjęcia (z GPS)'], ['dayPlaceNames', 'Nazwy dni z miejscowości (GPS)'], ['dayNumbers', 'Numeruj dni („Dzień 1”, „Dzień 2”)'], ['kenBurns', 'Delikatne przybliżanie zdjęć']];
+let qsBusy = 0;
+function renderQS(q) {
+  const L = $('#qsL'); if (!L || !q) return;
+  if (!L.children.length) for (const [k, label] of QS_L) {
+    const r = document.createElement('label'); r.className = 'brk'; r.innerHTML = '<input type="checkbox"> <span></span>'; r.querySelector('span').textContent = label;
+    const c = r.querySelector('input'); c.dataset.k = k;
+    c.onchange = () => { qsBusy = Date.now(); send('qs', '', k + '=' + (c.checked ? 1 : 0)); };
+    L.append(r);
+  }
+  if (Date.now() - qsBusy < 1500) return;   // chwilę po kliknięciu nie nadpisujemy — laptop jeszcze przelicza
+  for (const c of L.querySelectorAll('input')) if (c.dataset.k in q) c.checked = !!q[c.dataset.k];
+}
 function render(d) {
   const s = d.state || {};
   $('#title').textContent = s.title || 'Pilot';
@@ -749,6 +766,7 @@ function render(d) {
   if (!s.on) { nowVideo(null); show('idle'); return; }
   show('ui');
   renderAlerts(s.alerts || []);
+  renderQS(s.qs);
   const rm = $('#remain'), R = s.remain, hideR = (() => { try { return localStorage.getItem('pilotRemainHide') === '1'; } catch { return false; } })();
   rm.hidden = !R || hideR; $('#remainShow').hidden = !R || !hideR;
   if (R) {
