@@ -11,7 +11,7 @@ function renderParts() {
   box.innerHTML = '';
   if (!win) return;
   const save = () => { S.parts = sortedParts(); saveS(); refresh(); };
-  const head = document.createElement('span'); head.className = 'lbl'; head.textContent = 'Części i plansze (np. Ślub, Wesele albo Dzień 1, Dzień 2) — od której do której godziny';
+  const head = document.createElement('span'); head.className = 'lbl'; head.textContent = 'Części (np. Ślub, Wesele, Oczepiny) — od której do której godziny';
   box.append(head);
   // plansze części / dni można wyłączyć całkiem (plansza tytułowa ma osobne ustawienie w „Pokaz”)
   const chw = document.createElement('label'); chw.className = 'chk';
@@ -57,7 +57,7 @@ function renderParts() {
   add.textContent = '+ Dodaj część / planszę (np. Oczepiny)';
   add.onclick = () => { const last = parts[parts.length - 1] || { day: 0, time: '' }; S.parts.push({ label: 'Nowa część', day: last.day || 0, time: last.time && last.time < '23:00' ? String(+last.time.slice(0, 2) + 1).padStart(2, '0') + last.time.slice(2) : '22:00' }); save(); };
   const hint = document.createElement('p'); hint.className = 'hint';
-  hint.textContent = (parts.length ? '' : 'Bez części — plansze według dni (Dzień 1, Dzień 2…). ') + 'Przed każdą częścią w pokazie pojawia się plansza z jej nazwą. Puste „do” = do początku następnej części. Godziny po północy (np. do 04:00) liczą się do tej samej nocy. Zdjęcia spoza wszystkich części pokazują się bez nazwy i bez planszy.';
+  hint.textContent = (parts.length ? '' : 'Bez części — dni rozpoznane z dat zdjęć (lista poniżej). ') + 'Przed każdą częścią w pokazie pojawia się plansza z jej nazwą. Puste „do” = do początku następnej części. Godziny po północy (np. do 04:00) liczą się do tej samej nocy. Zdjęcia spoza wszystkich części pokazują się bez nazwy i bez planszy.';
   const clr = document.createElement('button'); clr.className = 'linkbtn'; clr.style.justifySelf = 'start'; clr.textContent = '✕ Usuń wszystkie części';
   clr.hidden = !parts.length;
   clr.onclick = () => { if (!confirm('Usunąć wszystkie części? Plansze będą wtedy według dni (Dzień 1, Dzień 2…) — albo odznacz „Plansza z nazwą…”, żeby nie było żadnych.')) return; S.parts = []; saveS(); refresh(); };

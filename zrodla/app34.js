@@ -14,15 +14,19 @@ function dayPlaceNamesOn() {
   if (S.dayPlaceNames != null) return !!S.dayPlaceNames;
   const t = (projList().find(x => x.id === PROJ) || {}).type; return t === 'wyjazd' || t === 'inne';
 }
+const DOW_LONG = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
+const dayDateLong = d => { const dd = parseYmd(d.key); return `${DOW_LONG[dd.getDay()].replace(/^./, c => c.toUpperCase())}, ${dd.getDate()} ${['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'][dd.getMonth()]}`; };
 const dayDate = d => { const dd = parseYmd(d.key); return `${DOW_SHORT[dd.getDay()]} ${pad(dd.getDate())}.${pad(dd.getMonth() + 1)}`; };
 applyDayPlaces = function () {
   const box = $('#dayPlaces'), useDays = !(S.parts && S.parts.length), names = S.dayNames || {}, places = dayPlaceNamesOn();
+  const num = S.dayNumbers === true;   // „Dzień 1”, „Dzień 2” — tylko na życzenie
   for (const [i, d] of dayList.entries()) {
     d.base = d.base || d.label;
     if (!useDays || d.filler) continue;
+    if (!num) d.base = dayDateLong(d);
     const auto = places ? dayPlace(i) : '', ovr = (S.dayPlaces || {})[d.key];
     d.place = ovr != null ? ovr : auto; d.autoPlace = auto;
-    d.label = d.place ? `${d.base} — ${d.place}` : d.base;
+    d.label = d.place ? (num ? `${d.base} — ${d.place}` : d.place) : d.base;
     d.noCard = names[d.key] === '';
     if (names[d.key]) d.label = names[d.key];
   }
@@ -35,9 +39,12 @@ applyDayPlaces = function () {
   const h = document.createElement('span'); h.className = 'lbl';
   h.textContent = S.chapters === true ? 'Plansze dni — tworzą się same, przed pierwszym zdjęciem z każdego dnia (dni program rozpoznaje z dat zdjęć). ✎ zmienia nazwę, ✕ — ten dzień bez planszy.' : 'Dni rozpoznane z dat zdjęć. Plansze dni są wyłączone (jest tylko plansza tytułowa) — włączysz je polem „Plansza z nazwą przed każdą częścią / dniem” powyżej. ✎ zmienia nazwę dnia.';
   const ck = document.createElement('label'); ck.className = 'chk';
-  ck.innerHTML = '<input type="checkbox"> <span>Dodawaj nazwę miejscowości z GPS zdjęć (np. „Dzień 1 — Florencja”)</span>';
+  ck.innerHTML = '<input type="checkbox"> <span>Nazwa dnia z miejscowości z GPS zdjęć (np. „Florencja”)</span>';
   const ci = ck.querySelector('input'); ci.checked = places; ci.onchange = () => { S.dayPlaceNames = ci.checked; saveS(); refresh(); };
-  box.append(h, ck);
+  const nk = document.createElement('label'); nk.className = 'chk';
+  nk.innerHTML = '<input type="checkbox"> <span>Numeruj dni („Dzień 1”, „Dzień 2”…) — bez tego dzień nazywa się miejscowością albo datą</span>';
+  const ni = nk.querySelector('input'); ni.checked = num; ni.onchange = () => { S.dayNumbers = ni.checked; saveS(); refresh(); };
+  box.append(h, ck, nk);
   for (const d of rows) {
     const r = document.createElement('div'); r.className = 'dp' + (d.noCard ? ' off' : '');
     r.innerHTML = '<small></small><span></span><button class="linkbtn" title="Zmień nazwę planszy">✎</button><button class="linkbtn" title="Bez planszy w tym dniu / przywróć"></button>';
@@ -46,7 +53,7 @@ applyDayPlaces = function () {
     const [ed, off] = r.querySelectorAll('button');
     off.textContent = d.noCard ? '↺' : '✕';
     ed.onclick = async () => {
-      const v = await askText(`Nazwa planszy — ${dayDate(d)}`, names[d.key] || d.label, 'Np. „Sobota”, „Wieczór panieński”. Wpisz „auto”, żeby wrócić do nazwy dnia (i miejscowości z GPS, jeśli włączone).');
+      const v = await askText(`Nazwa planszy — ${dayDate(d)}`, names[d.key] || d.label, 'Np. „Sobota”, „Wieczór panieński”. Wpisz „auto”, żeby wrócić do nazwy automatycznej (miejscowość z GPS albo data).');
       if (v === null) return;
       S.dayNames = S.dayNames || {};
       if (v.trim().toLowerCase() === 'auto' || !v.trim()) { delete S.dayNames[d.key]; if (S.dayPlaces) delete S.dayPlaces[d.key]; }
