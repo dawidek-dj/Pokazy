@@ -90,7 +90,7 @@ function createWindow() {
         ...(b ? { x: b.x, y: b.y, width: b.width, height: b.height, fullscreen: true, frame: false } : { width: 1280, height: 720 }),
         webPreferences: { backgroundThrottling: false, preload: undefined } } };
     }
-    if (!url || url === 'about:blank' || url.startsWith(`http://localhost:${port}/`)) return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, backgroundColor: '#0d0a0e', width: 1200, height: 800 } };
+    if (!url || url === 'about:blank' || url.startsWith(`http://localhost:${port}/`)) return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, backgroundColor: '#0d0a0e', width: 1200, height: 800, parent: mainWin } };   // podgląd nad oknem pokazu (także na pełnym ekranie)
     if (/^https?:/i.test(url)) shell.openExternal(url);
     return { action: 'deny' };
   });

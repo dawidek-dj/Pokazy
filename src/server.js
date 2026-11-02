@@ -32,12 +32,19 @@ function ytGet(u) {
 
 function httpGetBuf(u, headers) {
   return new Promise((res, rej) => {
-    const r = https.get(u, { headers, timeout: 10000 }, x => {
+    const r = (u.startsWith('http:') ? http : https).get(u, { headers, timeout: 10000 }, x => {
       if (x.statusCode !== 200) { x.resume(); return rej(new Error('HTTP ' + x.statusCode)); }
       const ch = []; x.on('data', d => ch.push(d)); x.on('end', () => res(Buffer.concat(ch)));
     });
     r.on('timeout', () => r.destroy(new Error('timeout'))); r.on('error', rej);
   });
+}
+// zapytania do OpenStreetMap po kolei, nie częściej niż raz na sekundę (zasady serwisu)
+let poiChain = Promise.resolve(), poiLast = 0;
+function poiGet(url, headers) {
+  const run = poiChain.then(async () => { const w = 1100 - (Date.now() - poiLast); if (w > 0) await new Promise(r => setTimeout(r, w)); try { return await httpGetBuf(url, headers); } finally { poiLast = Date.now(); } });
+  poiChain = run.catch(() => { });
+  return run;
 }
 const safeName = s => String(s || '').normalize('NFKC').replace(/[\\/:*?"<>|\x00-\x1f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
 const UP_EXT = /\.(jpe?g|png|heic|heif|webp|gif|mp4|mov|m4v|webm|3gp|mkv)$/i;
@@ -109,6 +116,15 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
     if (!isLocal(req) || q.get('t') !== token) return json(res, { ok: false }, 403);
     const fp = q.get('p') ? fromB64(q.get('p')) : '';
     try {
+      // nazwa obiektu (sala, kościół, restauracja…) z OpenStreetMap — najwyżej 1 zapytanie na sekundę
+      if (p === '/native/poi') {
+        const lat = +q.get('lat'), lon = +q.get('lon');
+        if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return json(res, { ok: false });
+        const base = process.env.POKAZY_POI_URL || 'https://nominatim.openstreetmap.org/reverse';
+        const run = poiGet(`${base}?format=jsonv2&lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}&zoom=18&namedetails=1&accept-language=pl`, { 'User-Agent': 'Pokazy/1.0 (prywatny pokaz zdjec; https://github.com)', 'Accept-Language': 'pl' });
+        try { const b = await run; return json(res, { ok: true, r: JSON.parse(b.toString('utf8')) }); }
+        catch (e) { return json(res, { ok: false, err: String(e && e.message || e) }); }
+      }
       if (p === '/native/scan') {
         const dir = fromB64(q.get('dir'));
         if (!dir || !fs.existsSync(dir)) return json(res, { ok: false, err: 'Folder nie istnieje' }, 404);

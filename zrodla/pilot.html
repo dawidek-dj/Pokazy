@@ -743,9 +743,13 @@ $('#annSend').onclick = async () => {
 
 const QS_L = [['showTitle', 'Plansza tytułowa na początku'], ['chapters', 'Plansze przed częściami / dniami'], ['captions', 'Godzina w rogu zdjęcia'], ['capDay', 'Nazwa dnia / części w rogu zdjęcia'], ['showPlace', 'Miejscowość w rogu zdjęcia (z GPS)'], ['dayPlaceNames', 'Nazwy dni z miejscowości (GPS)'], ['dayNumbers', 'Numeruj dni („Dzień 1”, „Dzień 2”)'], ['kenBurns', 'Delikatne przybliżanie zdjęć']];
 let qsBusy = 0;
-function renderQS(q) {
+let QS_DEFS = null;
+function renderQS(q, d) {
+  if (d && d.length) QS_DEFS = d;
   const L = $('#qsL'); if (!L || !q) return;
-  if (!L.children.length) for (const [k, label] of QS_L) {
+  const defs = QS_DEFS || QS_L, sig = defs.map(x => x[0]).join();
+  if (L.dataset.sig !== sig) { L.replaceChildren(); L.dataset.sig = sig; }
+  if (!L.children.length) for (const [k, label] of defs) {
     const r = document.createElement('label'); r.className = 'brk'; r.innerHTML = '<input type="checkbox"> <span></span>'; r.querySelector('span').textContent = label;
     const c = r.querySelector('input'); c.dataset.k = k;
     c.onchange = () => { qsBusy = Date.now(); send('qs', '', k + '=' + (c.checked ? 1 : 0)); };
@@ -766,7 +770,7 @@ function render(d) {
   if (!s.on) { nowVideo(null); show('idle'); return; }
   show('ui');
   renderAlerts(s.alerts || []);
-  renderQS(s.qs);
+  renderQS(s.qs, s.qsL);
   const rm = $('#remain'), R = s.remain, hideR = (() => { try { return localStorage.getItem('pilotRemainHide') === '1'; } catch { return false; } })();
   rm.hidden = !R || hideR; $('#remainShow').hidden = !R || !hideR;
   if (R) {

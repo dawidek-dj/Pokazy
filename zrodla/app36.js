@@ -57,7 +57,7 @@ Remote.exec = function (c) {
   return execQS(c);
 };
 const stateQS = Remote.state.bind(Remote);
-Remote.state = function (...a) { const s = stateQS(...a); if (s) s.qs = Object.fromEntries(QS_KEYS.map(([k]) => [k, qsGet(k)])); return s; };
+Remote.state = function (...a) { const s = stateQS(...a); if (s) { s.qs = Object.fromEntries(QS_KEYS.map(([k]) => [k, qsGet(k)])); s.qsL = QS_KEYS; } return s; };
 // przycisk ⚙: w pasku na dole pokazu (jeden ekran) i w panelu na laptopie (z telewizorem)
 (() => {
   const f = $('#cFull'); if (!f) return;
@@ -73,20 +73,3 @@ heartbeat(() => {
   if (!b) { const st = $('#cStatus'); if (!st) return; b = document.createElement('button'); b.id = 'qsBtn'; b.type = 'button'; b.className = 'btn small ghost'; b.textContent = '⚙ Wyświetlanie'; b.onclick = openQS; st.after(b); }
 });
 
-// start
-Hist.last = JSON.stringify(O);
-bindSettings();
-bindExtraSettings();
-renderSidebar();
-renderTimeline();
-renderHeader();
-renderReopen();
-updUndoUI();
-updMVUI();
-updGReqUI();
-updProjUI();
-updGPUI();
-for (const P of Picker.inst) Picker.render(P);
-if (location.protocol === 'file:') $('#fileWarn').hidden = false;
-Remote.init();
-if (!NATIVE) offerRecovery();
