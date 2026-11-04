@@ -1,0 +1,141 @@
+# Buduje aplikację Pokazy na iPada (plik .ipa do wgrania przez Sideloadly / SideStore).
+#   • Pokazy-iPad-X.Y.Z.ipa        — aplikacja (niepodpisana — podpisuje ją Sideloadly/SideStore Twoim Apple ID)
+#   • pokazy-sidestore.json         — „źródło” dla SideStore (aktualizacje z poziomu iPada)
+# Uruchamiasz ręcznie: zakładka Actions → „Zbuduj Pokazy na iPada” → Run workflow → wpisz numer wersji.
+# Jeśli wydanie vX.Y.Z (wersja na Windows) już istnieje — plik .ipa zostanie do niego dołączony.
+# Zawsze jest też do pobrania w podsumowaniu przebiegu (sekcja „Artifacts”).
+name: Zbuduj Pokazy na iPada
+
+on:
+  workflow_dispatch:
+    inputs:
+      wersja:
+        description: 'Numer wersji, np. 1.0.1 (najlepiej ten sam co wersja na Windows)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  NODEJS_MOBILE: v18.20.4
+
+jobs:
+  ipad:
+    runs-on: macos-15
+    steps:
+      - name: Pobierz pliki projektu
+        uses: actions/checkout@v5
+
+      - name: Sprawdź układ plików
+        shell: bash
+        run: |
+          BRAK=""
+          for f in src/server.js src/scan.js zrodla/build.py ios/project.yml ios/node/main.js ios/node/native-ios.js ios/Pokazy/AppDelegate.swift; do
+            [ -f "$f" ] || BRAK="$BRAK $f"
+          done
+          if [ -n "$BRAK" ]; then echo "::error::Brakuje plików:$BRAK (wgraj całą zawartość pokazy-aplikacja, razem z folderem ios)"; exit 1; fi
+
+      - name: Przygotuj Pythona
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Złóż stronę pokazu ze źródeł
+        run: python zrodla/build.py web --app
+
+      - name: Node.js dla iPada (nodejs-mobile)
+        shell: bash
+        run: |
+          curl -fsSL -o nodejs-mobile.zip "https://github.com/nodejs-mobile/nodejs-mobile/releases/download/${NODEJS_MOBILE}/nodejs-mobile-${NODEJS_MOBILE}-ios.zip"
+          unzip -q nodejs-mobile.zip 'NodeMobile.xcframework/*' -d ios/Frameworks
+          ls ios/Frameworks/NodeMobile.xcframework
+
+      - name: Serwer programu i strona do aplikacji
+        shell: bash
+        run: |
+          P=ios/Resources/nodejs-project
+          rm -rf "$P"; mkdir -p "$P"
+          cp ios/node/main.js ios/node/native-ios.js src/server.js src/scan.js "$P/"
+          cp -R web "$P/web"
+          echo '{"name":"pokazy-ipad","private":true,"main":"main.js"}' > "$P/package.json"
+          du -sh "$P"
+
+      - name: Projekt Xcode (XcodeGen)
+        shell: bash
+        run: |
+          brew install xcodegen
+          cd ios && xcodegen generate
+
+      - name: Zbuduj aplikację
+        shell: bash
+        run: |
+          WERSJA="${{ inputs.wersja }}"; WERSJA="${WERSJA#v}"; WERSJA="${WERSJA// /}"
+          echo "WERSJA=$WERSJA" >> "$GITHUB_ENV"
+          xcodebuild -version
+          cd ios
+          set -o pipefail
+          xcodebuild -project Pokazy.xcodeproj -target Pokazy -configuration Release -sdk iphoneos \
+            SYMROOT="$PWD/build" \
+            MARKETING_VERSION="$WERSJA" CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build | tee build.log | grep -E "error:|warning: .*nearly matches|BUILD (SUCCEEDED|FAILED)" || true
+          test -d build/Release-iphoneos/Pokazy.app || { echo "::error::Budowanie się nie udało — szczegóły w kroku powyżej (linie z „error:”)"; tail -80 build.log; exit 1; }
+
+      - name: Spakuj plik .ipa
+        shell: bash
+        run: |
+          cd ios
+          rm -rf Payload; mkdir Payload
+          cp -R build/Release-iphoneos/Pokazy.app Payload/
+          ls Payload/Pokazy.app/Frameworks
+          zip -qry "../Pokazy-iPad-$WERSJA.ipa" Payload
+          cd ..
+          ls -la "Pokazy-iPad-$WERSJA.ipa"
+
+      - name: Źródło dla SideStore (aktualizacje z iPada)
+        shell: bash
+        run: |
+          SIZE=$(stat -f%z "Pokazy-iPad-$WERSJA.ipa")
+          REPO="${{ github.repository }}"
+          cat > pokazy-sidestore.json <<EOF
+          {
+            "name": "Pokazy",
+            "identifier": "pl.pokazy.source",
+            "sourceURL": "https://github.com/$REPO/releases/latest/download/pokazy-sidestore.json",
+            "apps": [{
+              "name": "Pokazy",
+              "bundleIdentifier": "pl.pokazy.ipad",
+              "developerName": "Pokazy",
+              "localizedDescription": "Pokazy zdjęć i filmów z wydarzeń — na iPadzie i telewizorze (HDMI).",
+              "iconURL": "https://raw.githubusercontent.com/$REPO/HEAD/build/icon.png",
+              "versions": [{
+                "version": "$WERSJA",
+                "date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+                "downloadURL": "https://github.com/$REPO/releases/download/v$WERSJA/Pokazy-iPad-$WERSJA.ipa",
+                "size": $SIZE,
+                "minOSVersion": "16.0"
+              }]
+            }]
+          }
+          EOF
+          cat pokazy-sidestore.json
+
+      - name: Do pobrania (Artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pokazy-iPad-${{ env.WERSJA }}
+          path: |
+            Pokazy-iPad-${{ env.WERSJA }}.ipa
+            pokazy-sidestore.json
+
+      - name: Dołącz do wydania vX.Y.Z (jeśli istnieje)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "v$WERSJA" >/dev/null 2>&1; then
+            gh release upload "v$WERSJA" "Pokazy-iPad-$WERSJA.ipa" pokazy-sidestore.json --clobber
+            echo "Dołączono do wydania v$WERSJA."
+          else
+            echo "::notice::Nie ma wydania v$WERSJA (wersji na Windows) — plik .ipa pobierz z sekcji Artifacts tego przebiegu."
+          fi
