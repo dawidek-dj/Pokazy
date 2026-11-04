@@ -3,3 +3,10 @@ dist/
 web/
 dane-dev/
 *.log
+ios/Frameworks/
+ios/Resources/
+ios/build/
+ios/Payload/
+ios/*.xcodeproj/
+ios/Pokazy/Info.plist
+*.ipa

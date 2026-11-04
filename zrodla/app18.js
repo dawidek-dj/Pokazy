@@ -205,13 +205,20 @@ runShowTest = async function (...a) {
 /* =========================================================
    Projekt na pendrive (pliki + przygotowane wersje) i otwieranie go na innym komputerze
    ========================================================= */
-async function packProject() {
+async function packProject(destArg) {
   if (!NATIVE) return;
-  const dest = await NATIVE.pickFolder(); if (!dest) return;
+  const dest = typeof destArg === 'string' && destArg ? destArg : await NATIVE.pickFolder(); if (!dest) return;
   const files = items.filter(it => it.file && it.file.native && !(O[it.key] || {}).priv).map(it => ({ path: it.file.fullPath, rel: `${it.source || 'Pliki'}/${it.file._path || it.name}` }));
+  // muzyka z folderu na laptopie jedzie razem z projektem (Pliki/Muzyka)
+  let music = false;
+  if (NF.musicFolder && window.__scanFolder) { try { for (const f of await window.__scanFolder(NF.musicFolder, 'audio')) { files.push({ path: f.fullPath, rel: `Muzyka/${f._path || f.name}` }); music = true; } } catch { } }
+  // nazwy obiektów (sala, kościół…) już pobrane — na iPadzie / innym laptopie bez internetu
+  const poi = {}; if (typeof POI !== 'undefined') for (const it of showList) if (it.gps) { const k = poiCell(it.gps); if (POI.cache[k]) poi[k] = POI.cache[k]; }
+  // karty miejsc: kraj, pogoda, ciekawostki — już pobrane
+  const placeInfo = {}; if (typeof PCARDS !== 'undefined') for (const p of PCARDS) { const k = pcKey(p.town, p.g); if (PLC.cache[k]) placeInfo[k] = PLC.cache[k]; }
   const voices = Object.entries(O).filter(([, o]) => o.voice).map(([k]) => k);
   const tpl = (projList().find(x => x.id === PROJ) || {}).type || 'inne';
-  const project = { app: 'pokaz-weselny', v: 1, pokazy: 2, name: projName(), type: tpl, settings: S, overrides: O, offsets: OFFS, voices: voices.map((k, i) => ({ key: k, file: `komentarz_${i}.webm` })), guestFrom: GU.from };
+  const project = { app: 'pokaz-weselny', v: 1, pokazy: 2, name: projName(), type: tpl, settings: S, overrides: O, offsets: OFFS, voices: voices.map((k, i) => ({ key: k, file: `komentarz_${i}.webm` })), guestFrom: GU.from, music, poi, placeInfo };
   const r = await (await fetch(`/native/pack?t=${NATIVE.token}`, { method: 'POST', body: JSON.stringify({ dest, name: projName(), files, project }) })).json();
   if (!r.ok) { toast(r.err || 'Nie udało się.'); return; }
   for (const [i, k] of voices.entries()) { const b = await idb.get('disp', voiceKey(k)).catch(() => null); if (b) await fetch(`/native/packasset?t=${NATIVE.token}&dir=${b64u(r.root + '/Komentarze')}&name=komentarz_${i}.webm`, { method: 'POST', body: b }); }
@@ -240,6 +247,9 @@ async function unpackProject() {
     localStorage.setItem(pre + 'offsets', JSON.stringify(pj.offsets || {}));
     localStorage.setItem(pre + 'folders', JSON.stringify([{ dir: dir + sep + 'Pliki', name: 'Pliki' }]));
     if (pj.guestFrom) localStorage.setItem(pre + 'guestFrom', JSON.stringify(pj.guestFrom));
+    if (pj.music) localStorage.setItem(pre + 'musicFolder', JSON.stringify(dir + sep + 'Pliki' + sep + 'Muzyka'));
+    if (pj.poi && Object.keys(pj.poi).length) { const c = LSG.get('poiCache', {}); Object.assign(c, pj.poi); LSG.set('poiCache', c); }
+    if (pj.placeInfo && Object.keys(pj.placeInfo).length) { const c = LSG.get('placeInfo', {}); Object.assign(c, pj.placeInfo); LSG.set('placeInfo', c); }
   } catch { }
   for (const v of pj.voices || []) { try { const b = await (await fetch(nurl('file', `${dir}${sep}Komentarze${sep}${v.file}`))).blob(); await idb.put('disp', `voice:${id}:${v.key}`, b); } catch { } }
   toast(`Otwieram projekt „${pj.name}” (przygotowane pliki: ${u.copied || 0})…`);
@@ -267,7 +277,7 @@ async function unpackProject() {
   };
   $('#ptToggle').onclick = () => { box.hidden = !box.hidden; if (!box.hidden) renderPT(); };
   $('#perfRun').onclick = () => perfTest(true);
-  $('#packBtn').onclick = packProject; $('#unpackBtn').onclick = unpackProject;
+  $('#packBtn').onclick = () => packProject(); $('#unpackBtn').onclick = unpackProject;
   applyLook(); updPerfUI(); detectDisplays();
   // pierwsze uruchomienie aplikacji: krótki test wydajności
   if (NATIVE && !Perf.level) { const tryPerf = () => { if (Show.on) return; if (!$('#modal').hidden) { setTimeout(tryPerf, 3000); return; } perfTest(true); }; setTimeout(tryPerf, 4000); }   // po zamknięciu okna startowego

@@ -475,7 +475,7 @@ const Remote = {
       const st = this.state();
       const r = await fetchT('/api/sync?k=' + encodeURIComponent(this.token) + guestParams(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(st) });
       const d = await r.json();
-      const before = this.clients; this.clients = d.clients || 0;
+      const before = this.clients; this.clients = d.clients || 0; this.peer = !!d.peer;
       if (this.clients && !before && Show.on) flash('📱 Telefon połączony jako pilot');
       if (st.thumb !== this.lastThumb && !this.thumbBusy) {   // miniatura osobno — nie blokuje synchronizacji
         this.thumbBusy = true; const key = st.thumb;

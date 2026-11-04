@@ -23,7 +23,7 @@ function liveReslide() {
   // to samo zdjęcie / ta sama plansza; gdy planszy już nie ma — najbliższe zdjęcie po niej
   const find = s => {
     if (!s) return -1;
-    let i = s.items ? slides.findIndex(x => x.items && slideKey(x) === slideKey(s)) : slides.findIndex(x => x.type === s.type && x.day === s.day);
+    let i = s.items ? slides.findIndex(x => x.items && slideKey(x) === slideKey(s)) : slides.findIndex(x => x.type === s.type && x.day === s.day && x.hop === s.hop);
     return i >= 0 ? { i, same: true } : { i: slides.findIndex(x => x.items && x.t >= s.t), same: false };
   };
   if (ret) { const r = find(ret); Show.returnTo = r.i >= 0 ? r.i : null; }

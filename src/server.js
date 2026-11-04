@@ -12,8 +12,8 @@ function lanIps() {
   const out = [];
   for (const [name, list] of Object.entries(os.networkInterfaces())) for (const a of list || []) {
     if (a.family !== 'IPv4' || a.internal || a.address.startsWith('169.254.')) continue;
-    const vpn = /nord|lynx|vpn|wireguard|wintun|tap|tun|virtual|vmware|vbox|hyper-v|vethernet|tailscale|zerotier|hamachi|docker|wsl|bluetooth|proton|surfshark|expressvpn|cisco|fortinet/i.test(name);
-    const kind = /wi-?fi|wlan|wireless|bezprzew/i.test(name) ? 'wifi' : /ethernet|eth|en\d/i.test(name) ? 'ethernet' : 'other';
+    const vpn = /utun|ipsec|pdp_ip|nord|lynx|vpn|wireguard|wintun|tap|tun|virtual|vmware|vbox|hyper-v|vethernet|tailscale|zerotier|hamachi|docker|wsl|bluetooth|proton|surfshark|expressvpn|cisco|fortinet/i.test(name);
+    const kind = /wi-?fi|wlan|wireless|bezprzew/i.test(name) || (process.platform === 'ios' && name === 'en0') ? 'wifi' : /ethernet|eth|en\d/i.test(name) ? 'ethernet' : 'other';
     out.push({ ip: a.address, name, kind, gw: !vpn, vpn });
   }
   const rank = x => x.vpn ? 9 : x.kind === 'wifi' ? 0 : x.kind === 'ethernet' ? 1 : 2;
@@ -39,6 +39,12 @@ function httpGetBuf(u, headers) {
     r.on('timeout', () => r.destroy(new Error('timeout'))); r.on('error', rej);
   });
 }
+function peerGet(u, ms) {
+  return new Promise((res, rej) => {
+    const r = http.get(u, { timeout: ms }, x => { const ch = []; x.on('data', d => ch.push(d)); x.on('end', () => res({ status: x.statusCode, body: Buffer.concat(ch).toString('utf8') })); });
+    r.on('timeout', () => r.destroy(new Error('timeout'))); r.on('error', rej);
+  });
+}
 // zapytania do OpenStreetMap po kolei, nie częściej niż raz na sekundę (zasady serwisu)
 let poiChain = Promise.resolve(), poiLast = 0;
 function poiGet(url, headers) {
@@ -49,8 +55,8 @@ function poiGet(url, headers) {
 const safeName = s => String(s || '').normalize('NFKC').replace(/[\\/:*?"<>|\x00-\x1f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
 const UP_EXT = /\.(jpe?g|png|heic|heif|webp|gif|mp4|mov|m4v|webm|3gp|mkv)$/i;
 
-function createServer({ webDir, port = 8765, native = null, log = () => { }, tileDir = null, exporter = null, importer = null, albumer = null, copier = null, buildMosaic = null, drives = () => [], tmpDir = os.tmpdir() }) {
-  const token = crypto.randomBytes(18).toString('hex');   // klucz tylko dla okna aplikacji (dostęp do plików)
+function createServer({ webDir, port = 8765, native = null, log = () => { }, tileDir = null, exporter = null, importer = null, albumer = null, copier = null, buildMosaic = null, drives = () => [], tmpDir = os.tmpdir(), token: fixedToken = '' }) {
+  const token = fixedToken || crypto.randomBytes(18).toString('hex');   // klucz tylko dla okna aplikacji (dostęp do plików)
   const roots = new Set();
   async function radioPipe(u, req, res) {
     if (!/^https?:\/\//i.test(u)) return json(res, { ok: false }, 400);
@@ -125,13 +131,21 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
         try { const b = await run; return json(res, { ok: true, r: JSON.parse(b.toString('utf8')) }); }
         catch (e) { return json(res, { ok: false, err: String(e && e.message || e) }); }
       }
+      // zapasowy odtwarzacz: stan pokazu z głównego komputera (bez ograniczeń przeglądarki między adresami)
+      if (p === '/native/peer') {
+        const u = fromB64(q.get('u'));
+        if (!/^http:\/\/[\w.:\[\]-]+\/api\/(r\/state|tv\/pin)\?/.test(u)) return json(res, { ok: false, err: 'zły adres' }, 400);
+        try { const r = await peerGet(u, 2500); return json(res, { ok: true, status: r.status, body: r.body }); }
+        catch (e) { return json(res, { ok: false, err: String(e && e.message || e) }); }
+      }
+      if (p === '/native/docs' && native.docs) return json(res, { ok: true, ...(await native.docs()) });
       if (p === '/native/scan') {
-        const dir = fromB64(q.get('dir'));
+        const dir = native.remap ? native.remap(fromB64(q.get('dir'))) : fromB64(q.get('dir'));
         if (!dir || !fs.existsSync(dir)) return json(res, { ok: false, err: 'Folder nie istnieje' }, 404);
         roots.add(dir);
         return json(res, { ok: true, files: await native.scan(dir, q.get('want') || 'media') });
       }
-      if (p === '/native/addroot') { const dir = fromB64(q.get('dir')); if (dir) roots.add(dir); return json(res, { ok: true }); }
+      if (p === '/native/addroot') { const dir = native.remap ? native.remap(fromB64(q.get('dir'))) : fromB64(q.get('dir')); if (dir) roots.add(dir); return json(res, { ok: true }); }
       // eksport do MP4: pliki pomocnicze (plansze, nagrania), start, postęp, przerwanie
       if (p === '/native/exportasset' && req.method === 'POST') {
         if (!ST.assetDir) { ST.assetDir = path.join(tmpDir, 'pokazy-eksport-' + Date.now()); fs.mkdirSync(ST.assetDir, { recursive: true }); }
@@ -247,6 +261,7 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
         const root = path.join(d.dest, String(d.name || 'Projekt').replace(/[\\/:*?"<>|]/g, '').slice(0, 60) + ' — Pokazy');
         PK.state = 'running'; PK.done = 0; PK.total = d.files.length; PK.root = root; PK.err = '';
         (async () => {
+          const keys = {};
           try {
             fs.mkdirSync(path.join(root, 'Przygotowane'), { recursive: true });
             fs.writeFileSync(path.join(root, 'projekt.json'), JSON.stringify(d.project || {}, null, 1));
@@ -255,9 +270,11 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
               fs.mkdirSync(path.dirname(target), { recursive: true });
               const st = fs.statSync(f.path);
               if (!fs.existsSync(target) || fs.statSync(target).size !== st.size) { await fs.promises.copyFile(f.path, target); fs.utimesSync(target, st.atime, st.mtime); }
-              for (const c of await native.cacheFilesOf(f.path)) { const sub = path.join(root, 'Przygotowane', path.basename(path.dirname(c))); fs.mkdirSync(sub, { recursive: true }); const t = path.join(sub, path.basename(c)); if (!fs.existsSync(t)) await fs.promises.copyFile(c, t); }
+              const cfs = await native.cacheFilesOf(f.path); if (cfs.length) keys[`${path.basename(f.path).toLowerCase()}|${st.size}`] = path.basename(cfs[0]).slice(0, 24);
+              for (const c of cfs) { const sub = path.join(root, 'Przygotowane', path.basename(path.dirname(c))); fs.mkdirSync(sub, { recursive: true }); const t = path.join(sub, path.basename(c)); if (!fs.existsSync(t)) await fs.promises.copyFile(c, t); }
               PK.done++;
             }
+            fs.writeFileSync(path.join(root, 'Przygotowane', 'klucze.json'), JSON.stringify(keys));   // iPad: przygotowane wersje pasują, nawet gdy kopiowanie zmieni datę pliku
             PK.state = 'done';
           } catch (e) { PK.state = 'error'; PK.err = String(e.message || e); log('pakowanie', PK.err); }
         })();
@@ -270,9 +287,11 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
       }
       if (p === '/native/packstatus') return json(res, { ok: true, ...PK });
       if (p === '/native/unpack') {
-        const dir = fromB64(q.get('dir')), src = path.join(dir, 'Przygotowane'); let n = 0;
+        const dir = native.remap ? native.remap(fromB64(q.get('dir'))) : fromB64(q.get('dir')), src = path.join(dir, 'Przygotowane'); let n = 0;
         roots.add(dir);
         if (fs.existsSync(src)) for (const sub of fs.readdirSync(src)) {
+          if (sub === 'klucze.json') { if (native.addKeys) try { native.addKeys(JSON.parse(fs.readFileSync(path.join(src, sub), 'utf8'))); } catch { } continue; }
+          if (!fs.statSync(path.join(src, sub)).isDirectory()) continue;
           const to = path.join(native.cacheDir, sub); fs.mkdirSync(to, { recursive: true });
           for (const f of fs.readdirSync(path.join(src, sub))) { const t = path.join(to, f); if (!fs.existsSync(t)) { fs.copyFileSync(path.join(src, sub, f), t); n++; } }
         }
@@ -285,6 +304,8 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
         return json(res, { ok: true, n: ST.gallery.length });
       }
       if (fp && !inRoots(fp)) return json(res, { ok: false, err: 'Poza dodanymi folderami' }, 403);
+      // iPad: miniatura i dane zrobione w oknie programu — zapisane, żeby następnym razem były od razu
+      if (p === '/native/store' && req.method === 'POST' && native.store) { await native.store(fp, q.get('k'), await readBody(req)); return json(res, { ok: true }); }
       if (p === '/native/file') return sendFile(req, res, fp);
       if (p === '/native/analyze') { const r = await native.analyze(fp, +q.get('max') || 3840); if (r.kind === 'video') r.prepared = !!(await native.preparedPath(fp, +q.get('max') || 3840)); return json(res, { ok: true, ...r }); }
       if (p === '/native/prepdisp') { const made = await native.ensureDisp(fp, +q.get('max') || 3840); return json(res, { ok: true, made }); }
@@ -334,7 +355,7 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
         ST.token = q.get('k') || ''; ST.gtoken = q.get('g') || ''; ST.gflags = q.get('gf') || ''; if (q.get('i')) ST.itoken = q.get('i'); if (data.length && data[0] === 0x7b) ST.state = data; ST.lastSync = now;
         const cmds = ST.cmds; ST.cmds = [];
         let clients = 0; for (const t of ST.seen.values()) if (now - t < 6000) clients++;
-        return json(res, { cmds, clients });
+        return json(res, { cmds, clients, peer: now - (ST.peerSeen || 0) < 6000 });
       }
       if (p === '/api/thumb' && local && req.method === 'POST') {
         const data = await readBody(req), key = q.get('key');
@@ -416,7 +437,7 @@ function createServer({ webDir, port = 8765, native = null, log = () => { }, til
         if (p === '/api/r/music') { const m = ST.castMusic || {}; return m.path && inRoots(m.path) ? sendFile(req, res, m.path) : send(res, 404, 'text/plain', '404'); }
         if (p === '/api/r/radio') { const m = ST.castMusic || {}; return m.radio ? radioPipe(m.radio, req, res) : send(res, 404, 'text/plain', '404'); }
         if (p === '/api/r/media') { const it = ST.cast && ST.cast.get(q.get('key') || ''); if (!it) return send(res, 404, 'text/plain', '404'); if (q.get('v') === 'disp' && native) { const d = await native.cacheFile(it.path, 'disp').catch(() => null); if (d) return sendFile(req, res, d, 'image/jpeg'); } const pv = it.kind === 'video' && native ? await native.preparedPath(it.path, 3840).catch(() => null) : null; return sendFile(req, res, pv || it.path); }
-        ST.seen.set(clientIp(req), now);
+        if (q.get('peer')) ST.peerSeen = now; else ST.seen.set(clientIp(req), now);   // zapasowy odtwarzacz nie liczy się jako telefon-pilot
         if (p === '/api/r/state') return send(res, 200, 'application/json; charset=utf-8', Buffer.concat([Buffer.from(`{"ok":true,"offline":${now - ST.lastSync > 10000},"rev":${ST.rev},"state":`), ST.state, Buffer.from('}')]), head);
         if (p === '/api/r/cmd' && req.method === 'POST') {
           const c = q.get('c') || '', cid = q.get('id') || '';

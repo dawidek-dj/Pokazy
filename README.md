@@ -22,11 +22,14 @@ projekt na pendrive razem z przygotowanymi plikami.
 - **Wersja przenośna:** `Pokazy-Portable-X.Y.Z.zip` — rozpakuj gdziekolwiek (także na pendrive),
   uruchom `Pokazy.exe`. Ustawienia i projekty są w folderze `dane` obok programu. Też aktualizuje się sama.
 
+- **iPad:** `Pokazy-iPad-X.Y.Z.ipa` — wgrywany przez SideStore lub Sideloadly; jak to zrobić i jak przenieść pokaz z laptopa — **PORADNIK-iPad.md**.
+
 Pliki do pobrania: zakładka **Releases** w tym repozytorium.
 Jak zbudować nową wersję: zobacz **PORADNIK.md**.
 
 ## Budowa projektu
 - `src/` — aplikacja (okna, serwer, obróbka zdjęć i filmów, aktualizacje)
+- `ios/` — aplikacja na iPada (Swift + Node.js z tym samym serwerem), budowana w GitHub Actions („Zbuduj Pokazy na iPada”)
 - `zrodla/` — strona pokazu (źródła); `python zrodla/build.py web --app` składa ją do folderu `web/`
 - `.github/workflows/build.yml` — automatyczna budowa instalatora i wersji przenośnej
 

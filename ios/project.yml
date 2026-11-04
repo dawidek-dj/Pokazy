@@ -1,0 +1,77 @@
+# Projekt Xcode dla aplikacji Pokazy na iPada — generowany automatycznie (XcodeGen) w GitHub Actions.
+# Przed generowaniem workflow kopiuje do Resources/nodejs-project: serwer programu, stronę (web) i Node.js (Frameworks).
+name: Pokazy
+options:
+  bundleIdPrefix: pl.pokazy
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "2"
+    ENABLE_BITCODE: NO
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Manual
+targets:
+  Pokazy:
+    type: application
+    platform: iOS
+    sources:
+      - path: Pokazy
+        excludes:
+          - "Info.plist"
+          - "native-shim.js"
+      - path: Pokazy/native-shim.js
+        buildPhase: resources
+      - path: Resources/nodejs-project
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - framework: Frameworks/NodeMobile.xcframework
+        embed: true
+        codeSign: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: pl.pokazy.ipad
+        PRODUCT_NAME: Pokazy
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Pokazy/Info.plist
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+        SUPPORTS_MACCATALYST: NO
+    info:
+      path: Pokazy/Info.plist
+      properties:
+        CFBundleDisplayName: Pokazy
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        UILaunchScreen: {}
+        UIRequiresFullScreen: true
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+          - UIInterfaceOrientationPortrait
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        UIBackgroundModes:
+          - audio
+        NSLocalNetworkUsageDescription: "Pokazy łączą się z telefonem-pilotem i telefonami gości (kod QR) w tej samej sieci Wi-Fi."
+        NSBonjourServices:
+          - _http._tcp
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+          NSAllowsLocalNetworking: true
+          NSAllowsArbitraryLoadsInWebContent: true
+        ITSAppUsesNonExemptEncryption: false
